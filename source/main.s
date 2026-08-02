@@ -12,7 +12,7 @@ Main:
 
 Loop:
     sub  $t0, $t1
-    addi $t2, 0x0001
+    addi $t2, 0x0001 ; This is a shorthand for addi $t2, $t2, 0x0001
     bge  $t0, $t1, Loop
     nop
 
