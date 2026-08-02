@@ -16,5 +16,5 @@ run_asm: build_asm
 	${OUTPUT_PATH}/${ASM_EXE_NAME}
 
 build_asm:
-	armips ./source/fill_mem.s
-	./vendor/bin2exe.py ./bin/fill_mem.bin ./bin/fill_mem.psx
+	armips ./source/main.s
+	./vendor/bin2exe.py ./bin/main.bin ./bin/main.psx
