@@ -59,49 +59,52 @@ Main:
     ; ==========================================================================
     ; Draw Flat-shaded Triangle
     ; ==========================================================================
-    li $t1, 0x2000FFFF ; 2 - triangle, 0 - flat-shaded, 00FFFF - color
-    sw $t1, GP0($t0)
-    li $t1, 0x00320032 ; First vertex coordinate (50, 50)
-    sw $t1, GP0($t0)
-    li $t1, 0x001E0064 ; Second vertex (100, 30)
-    sw $t1, GP0($t0)
-    li $t1, 0x0064006E ; Third vertex (110, 100)
-    sw $t1, GP0($t0)
-
-    ; ==========================================================================
-    ; Draw Flat-shaded Quad
-    ; ==========================================================================
-    li $t1, 0x28FF00FF
-    sw $t1, GP0($t0)
-    li $t1, 0x00960096
-    sw $t1, GP0($t0)
-    li $t1, 0x006400BE
-    sw $t1, GP0($t0)
-    li $t1, 0x00DC00A0
-    sw $t1, GP0($t0)
-    li $t1, 0x00CB0104
-    sw $t1, GP0($t0)
-
-    ; ==========================================================================
-    ; Draw Gouraud-shaded Triangle
-    ; ==========================================================================
-    li $t1, 0x30FF31FF ; Gouraud-shaded triangle, Vertex1 color FF31FF
-    sw $t1, GP0($t0)
-    li $t1, 0x00B40014 ; Vertex1 coords
-    sw $t1, GP0($t0)
-    li $t1, 0x00A88332 ; Vertex2 color
-    sw $t1, GP0($t0)
-    li $t1, 0x006400A0 ; Vertex2 coords
-    sw $t1, GP0($t0)
-    li $t1, 0x0000FF00 ; Vertex3 color
-    sw $t1, GP0($t0)
-    li $t1, 0x00E6004B ; Vertex3 coords
-    sw $t1, GP0($t0)
+    lui $a0, IO_BASE_ADDR
+    li $s0, 0x0000FF
+    li $s1, 50
+    li $s2, 50
+    li $s3, 100
+    li $s4, 30
+    li $s5, 110
+    li $s6, 100
+    jal DrawFlatTriangle
+    nop
 
 LoopForever:
     j LoopForever
     nop
 
 End:
+
+; $a0 - IO_BASE_ADDR
+; $s0 - Color - 0xBBGGRR
+; $s1 - x1
+; $s2 - y1
+; $s3 - x2
+; $s4 - y2
+; $s5 - x3
+; $s6 - y3
+DrawFlatTriangle:
+    lui $t0, 0x2000   ; 0x20 - flat-shaded triangle
+    or  $t1, $t0, $s0 ; $t1 |= $t0 | $s0
+    sw  $t1, GP0($a0)
+
+    sll  $s2, $s2, 16     ; Make room for the x coordinate. We hade 0xYYYY, now we have 0xYYYY0000
+    andi $s1, $s1, 0xFFFF ; IDK
+    or   $t1, $s1, $s2    ; Combine XXXX and YYYY
+    sw   $t1, GP0($a0)    ; Send to the GPU
+
+    sll  $s4, $s4, 16
+    andi $s3, $s3, 0xFFFF
+    or   $t1, $s3, $s4
+    sw   $t1, GP0($a0)
+
+    sll  $s6, $s6, 16
+    andi $s5, $s5, 0xFFFF
+    or   $t1, $s5, $s6
+    sw   $t1, GP0($a0)
+
+    jr $ra
+    nop
 
 .close
