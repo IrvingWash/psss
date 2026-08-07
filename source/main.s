@@ -59,6 +59,14 @@ Main:
     ; ==========================================================================
     ; Draw Flat-shaded Triangle
     ; ==========================================================================
+    li $t1, 0x2000FFFF ; 2 - triangle, 0 - flat-shaded, 00FFFF - color
+    sw $t1, GP0($t0)
+    li $t1, 0x00320032 ; First vertex coordinate (50, 50)
+    sw $t1, GP0($t0)
+    li $t1, 0x001E0064 ; Second vertex (100, 30)
+    sw $t1, GP0($t0)
+    li $t1, 0x0064006E ; Third vertex (110, 100)
+    sw $t1, GP0($t0)
 
 LoopForever:
     j LoopForever
