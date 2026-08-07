@@ -12,9 +12,6 @@ build:
 	@mkdir -p ${OUTPUT_PATH}
 	gcc ./source/main.c -Wall -o ${OUTPUT_PATH}/${EXE_NAME}
 
-run_asm: build_asm
-	${OUTPUT_PATH}/${ASM_EXE_NAME}
-
 build_asm:
 	armips ./source/main.s
 	./vendor/bin2exe.py ./bin/main.bin ./bin/main.psx
