@@ -68,6 +68,36 @@ Main:
     li $t1, 0x0064006E ; Third vertex (110, 100)
     sw $t1, GP0($t0)
 
+    ; ==========================================================================
+    ; Draw Flat-shaded Quad
+    ; ==========================================================================
+    li $t1, 0x28FF00FF
+    sw $t1, GP0($t0)
+    li $t1, 0x00960096
+    sw $t1, GP0($t0)
+    li $t1, 0x006400BE
+    sw $t1, GP0($t0)
+    li $t1, 0x00DC00A0
+    sw $t1, GP0($t0)
+    li $t1, 0x00CB0104
+    sw $t1, GP0($t0)
+
+    ; ==========================================================================
+    ; Draw Gouraud-shaded Triangle
+    ; ==========================================================================
+    li $t1, 0x30FF31FF ; Gouraud-shaded triangle, Vertex1 color FF31FF
+    sw $t1, GP0($t0)
+    li $t1, 0x00B40014 ; Vertex1 coords
+    sw $t1, GP0($t0)
+    li $t1, 0x00A88332 ; Vertex2 color
+    sw $t1, GP0($t0)
+    li $t1, 0x006400A0 ; Vertex2 coords
+    sw $t1, GP0($t0)
+    li $t1, 0x0000FF00 ; Vertex3 color
+    sw $t1, GP0($t0)
+    li $t1, 0x00E6004B ; Vertex3 coords
+    sw $t1, GP0($t0)
+
 LoopForever:
     j LoopForever
     nop
