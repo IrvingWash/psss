@@ -1,21 +1,3 @@
-OUTPUT_PATH  = ./bin
-EXE_NAME     = psss
-DEBUG_EXE_NAME = ${EXE_NAME}_debug
-
-run_debug: build_debug
-	${OUTPUT_PATH}/${DEBUG_EXE_NAME}
-
-build_debug:
-	@mkdir -p ${OUTPUT_PATH}
-	gcc ./source/main.c -std=c17 -Wall -Wextra -Wpedantic -g -O0 -o ${OUTPUT_PATH}/${DEBUG_EXE_NAME}
-
-run_release: build_release
-	${OUTPUT_PATH}/${EXE_NAME}
-
-build_release:
-	@mkdir -p ${OUTPUT_PATH}
-	gcc ./source/main.c -std=c17 -Wall -Wextra -Wpedantic -O2 -o ${OUTPUT_PATH}/${EXE_NAME}
-
 # ==============================================================================
 # MIPS Assembly experiments
 # ==============================================================================
