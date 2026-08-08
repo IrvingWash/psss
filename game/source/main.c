@@ -15,7 +15,36 @@
 #define SCREEN_Z 400
 
 #define BUFFER_COUNT 2
-#define OT_LENGTH 16
+#define OT_LENGTH 256
+
+#define VERTEX_COUNT 8
+const SVECTOR const VERTICES[] = {
+    { -128, -128, -128 },
+    { 128, -128, -128 },
+    { 128, -128, 128 },
+    { -128, -128, 128 },
+    { -128, 128, -128 },
+    { 128, 128, -128 },
+    { 128, 128, 128 },
+    { -128, 128, 128 },
+};
+
+#define FACE_COUNT 12
+#define VERTICES_PER_FACE 3
+short const FACES[] = {
+    0, 3, 2,
+    0, 2, 1,
+    4, 0, 1,
+    4, 1, 5,
+    7, 4, 5,
+    7, 5, 6,
+    5, 1, 2,
+    5, 2, 6,
+    2, 3, 7,
+    2, 7, 6,
+    0, 4, 7,
+    0, 7, 3,
+};
 
 typedef struct {
     DRAWENV draw[BUFFER_COUNT];
@@ -33,10 +62,13 @@ char   primitive_buffer[BUFFER_COUNT][2048] = {0};
 // Pointes to the end of the last primitive in the primitive buffer
 char   *next_primitive;
 
-// "Entities"
-POLY_F3 *my_triangle;
-TILE    *my_tile;
-POLY_G4 *my_quad;
+POLY_G3 *my_poly;
+
+SVECTOR rotation    = { 0, 0, 0 };
+VECTOR  translation = { 0, 0, 900 };
+VECTOR  scale       = { ONE, ONE, ONE };
+
+MATRIX world_transform = {0};
 
 void init_screen(void) {
     assert(BUFFER_COUNT == 2); // If this fails, many things should be changed
@@ -93,34 +125,61 @@ void setup(void) {
 }
 
 void update(void) {
+    rotation.vx += 6;
+    rotation.vy += 8;
+    rotation.vz += 12;
+
     // Clear OT, so we can reuse it
     ClearOTagR(ordering_table[screen.current_buffer], OT_LENGTH);
     next_primitive = primitive_buffer[screen.current_buffer];
 
-    my_tile = (TILE*) next_primitive; // Point to the next slot in the primitive_buffer
-    setTile(my_tile); // Initialize the primitive
-    setXY0(my_tile, 82, 32);
-    setWH(my_tile, 64, 64);
-    setRGB0(my_tile, 0, 255, 0);
-    addPrim(ordering_table[screen.current_buffer], my_tile); // Add the primitive to the ordering table, the function is from the SDK!
-    next_primitive += sizeof(TILE);
+    // Prepare transforms
+    RotMatrix(&rotation, &world_transform);
+    TransMatrix(&world_transform, &translation);
+    ScaleMatrix(&world_transform, &scale);
 
-    my_triangle = (POLY_F3*) next_primitive;
-    setPolyF3(my_triangle);
-    setXY3(my_triangle, 64, 100, 200, 150, 50, 220);
-    setRGB0(my_triangle, 255, 0, 255);
-    addPrim(ordering_table[screen.current_buffer], my_triangle);
-    next_primitive += sizeof(POLY_F3);
+    gte_SetRotMatrix(&world_transform);
+    gte_SetTransMatrix(&world_transform);
 
-    my_quad = (POLY_G4*) next_primitive;
-    setPolyG4(my_quad);
-    setXY4(my_quad, 140, 50, 200, 40, 170, 120, 220, 80);
-    setRGB0(my_quad, 255, 0, 0);
-    setRGB1(my_quad, 0, 255, 0);
-    setRGB2(my_quad, 0, 0, 255);
-    setRGB3(my_quad, 255, 255, 0);
-    addPrim(ordering_table[screen.current_buffer], my_quad);
-    next_primitive += sizeof(POLY_G4);
+    // Iterating faces
+    for (int i = 0; i < FACE_COUNT * VERTICES_PER_FACE; i += VERTICES_PER_FACE) {
+        my_poly = (POLY_G3*) next_primitive;
+        setPolyG3(my_poly);
+        setRGB0(my_poly, 255, 0, 255);
+        setRGB1(my_poly, 255, 255, 0);
+        setRGB2(my_poly, 0, 255, 255);
+
+        // Load the vertices of this face
+        gte_ldv3(
+            &VERTICES[FACES[i + 0]],
+            &VERTICES[FACES[i + 1]],
+            &VERTICES[FACES[i + 2]]
+        );
+        gte_rtpt(); // Rotation, translation, perspective on the loaded vertices
+
+
+        int normal_clip;
+        gte_nclip(); // Normal clip for backface culling
+        gte_stopz(&normal_clip); // Get result
+        if (normal_clip < 0) {
+            continue; // Skipping this face because it is backfaced
+        }
+
+        int average_z;
+        gte_avsz3(); // Calculate average z for depth sorting
+        gte_stotz(&average_z); // Get result
+        if (average_z >= OT_LENGTH || average_z < 0) {
+            continue; // Didn't pass the depth test.
+        }
+
+        // Set transformed vertices back
+        gte_stsxy0(&my_poly->x0);
+        gte_stsxy1(&my_poly->x1);
+        gte_stsxy2(&my_poly->x2);
+
+        addPrim(ordering_table[screen.current_buffer][average_z], my_poly);
+        next_primitive += sizeof(POLY_G3);
+    }
 }
 
 void render(void) {
