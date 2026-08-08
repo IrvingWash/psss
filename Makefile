@@ -1,4 +1,18 @@
 # ==============================================================================
+# PSX experiments
+# ==============================================================================
+# Uses PSn00bSDK and it's template
+build:
+	cd ./game/ && \
+		cmake --preset default . && \
+		cmake --build ./build
+
+build_and_prepare:
+	cd ./game/ && \
+		cmake --preset default . && \
+		bear -- cmake --build ./build
+
+# ==============================================================================
 # MIPS Assembly experiments
 # ==============================================================================
 # For assembly, armips is needed - https://github.com/Kingcom/armips
