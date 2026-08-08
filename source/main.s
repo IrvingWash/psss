@@ -90,7 +90,11 @@ DrawFlatTriangle:
     sw  $t1, GP0($a0)
 
     sll  $s2, $s2, 16     ; Make room for the x coordinate. We hade 0xYYYY, now we have 0xYYYY0000
-    andi $s1, $s1, 0xFFFF ; IDK
+    andi $s1, $s1, 0xFFFF ; Erase upper bits, because we expect x1 to be 16 bit in the lower bit:
+    ;   0xAB030032
+    ; & 0x0000FFFF
+    ;   ----------
+    ;   0x00000032
     or   $t1, $s1, $s2    ; Combine XXXX and YYYY
     sw   $t1, GP0($a0)    ; Send to the GPU
 
