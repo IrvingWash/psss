@@ -33,15 +33,17 @@ typedef struct Cube {
     VECTOR  velocity;
     VECTOR  acceleration;
     SVECTOR vertices[8];
-    short   faces[24];
+    short   faces[CUBE_FACE_COUNT * CUBE_VERTICES_PER_FACE];
 } Cube;
 
+#define FLOOR_FACE_COUNT 2
+#define FLOOR_VERTICES_PER_FACE 3
 typedef struct Floor {
     SVECTOR rotation;
     VECTOR  position;
     VECTOR  scale;
     SVECTOR vertices[4];
-    short   faces[6];
+    short   faces[FLOOR_FACE_COUNT * FLOOR_VERTICES_PER_FACE];
 } Floor;
 
 Double_Buffer screen;
@@ -53,7 +55,8 @@ char   primitive_buffer[BUFFER_COUNT][2048] = {0};
 // Pointes to the end of the last primitive in the primitive buffer
 char   *next_primitive;
 
-POLY_G4 *my_poly;
+POLY_G4 *poly_g4;
+POLY_F3 *poly_f3;
 
 MATRIX world_transform = {0};
 
@@ -154,6 +157,13 @@ void setup(void) {
 }
 
 void update(void) {
+    // Clear OT, so we can reuse it
+    ClearOTagR(ordering_table[screen.current_buffer], OT_LENGTH);
+    next_primitive = primitive_buffer[screen.current_buffer];
+
+    // =========================================================================
+    // Cube
+    // =========================================================================
     // Update the position based on the acceleration and velocity
     cube.velocity.vx += cube.acceleration.vx;
     cube.velocity.vy += cube.acceleration.vy;
@@ -163,17 +173,13 @@ void update(void) {
     cube.position.vy += cube.velocity.vy;
     cube.position.vz += cube.velocity.vz;
 
-    if (cube.position.vy > 400) {
+    if (cube.position.vy > 150) {
         cube.velocity.vy *= -1;
     }
 
     cube.rotation.vx += 6;
     cube.rotation.vy += 8;
     cube.rotation.vz += 12;
-
-    // Clear OT, so we can reuse it
-    ClearOTagR(ordering_table[screen.current_buffer], OT_LENGTH);
-    next_primitive = primitive_buffer[screen.current_buffer];
 
     // Prepare transforms
     RotMatrix(&cube.rotation, &world_transform);
@@ -185,12 +191,12 @@ void update(void) {
 
     // Iterating faces
     for (int i = 0; i < CUBE_FACE_COUNT * CUBE_VERTICES_PER_FACE; i += CUBE_VERTICES_PER_FACE) {
-        my_poly = (POLY_G4*) next_primitive;
-        setPolyG4(my_poly);
-        setRGB0(my_poly, 255, 0, 255);
-        setRGB1(my_poly, 255, 255, 0);
-        setRGB2(my_poly, 0, 255, 255);
-        setRGB3(my_poly, 255, 255, 255);
+        poly_g4 = (POLY_G4*) next_primitive;
+        setPolyG4(poly_g4);
+        setRGB0(poly_g4, 255, 0, 255);
+        setRGB1(poly_g4, 255, 255, 0);
+        setRGB2(poly_g4, 0, 255, 255);
+        setRGB3(poly_g4, 255, 255, 255);
 
         // Load the vertices of this face
         gte_ldv3(
@@ -216,17 +222,62 @@ void update(void) {
         }
 
         // Set transformed vertices back
-        gte_stsxy0(&my_poly->x0);
-        gte_stsxy1(&my_poly->x1);
-        gte_stsxy2(&my_poly->x2);
+        gte_stsxy0(&poly_g4->x0);
+        gte_stsxy1(&poly_g4->x1);
+        gte_stsxy2(&poly_g4->x2);
 
         // Compute the last vertex
         gte_ldv0(&cube.vertices[cube.faces[i + 3]]);
         gte_rtps();
-        gte_stsxy(&my_poly->x3);
+        gte_stsxy(&poly_g4->x3);
 
-        addPrim(ordering_table[screen.current_buffer][average_z], my_poly);
+        addPrim(ordering_table[screen.current_buffer][average_z], poly_g4);
         next_primitive += sizeof(POLY_G4);
+    }
+
+    // =========================================================================
+    // Floor
+    // =========================================================================
+    floor.rotation.vy += 5;
+
+    RotMatrix(&floor.rotation, &world_transform);
+    TransMatrix(&world_transform, &floor.position);
+    ScaleMatrix(&world_transform, &floor.scale);
+
+    gte_SetRotMatrix(&world_transform);
+    gte_SetTransMatrix(&world_transform);
+    for (int i = 0; i < FLOOR_FACE_COUNT * FLOOR_VERTICES_PER_FACE; i += FLOOR_VERTICES_PER_FACE) {
+        poly_f3 = (POLY_F3*) next_primitive;
+        setPolyF3(poly_f3);
+        setRGB0(poly_f3, 255, 255, 255);
+
+        gte_ldv3(
+            &floor.vertices[floor.faces[i + 0]],
+            &floor.vertices[floor.faces[i + 1]],
+            &floor.vertices[floor.faces[i + 2]]
+        );
+        gte_rtpt();
+
+        int normal_clip;
+        gte_nclip();
+        gte_stopz(&normal_clip);
+        if (normal_clip < 0) {
+            continue;
+        }
+
+        int average_z;
+        gte_avsz3();
+        gte_stotz(&average_z); // Get result
+        if (average_z >= OT_LENGTH || average_z < 0) {
+            continue;
+        }
+
+        gte_stsxy0(&poly_f3->x0);
+        gte_stsxy1(&poly_f3->x1);
+        gte_stsxy2(&poly_f3->x2);
+
+        addPrim(ordering_table[screen.current_buffer][average_z], poly_f3);
+        next_primitive += sizeof(POLY_F3);
     }
 }
 
