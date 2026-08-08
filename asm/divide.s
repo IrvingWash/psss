@@ -1,5 +1,5 @@
 .psx
-.create "./bin/main.bin", 0x80010000
+.create "./bin/divide.bin", 0x80010000
 
 .org 0x80010000
 
