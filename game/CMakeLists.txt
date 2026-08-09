@@ -4,18 +4,18 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(
-    xGAMEx
+    template
 	LANGUAGES    C CXX ASM
 	VERSION      1.0.0
-    DESCRIPTION  "xGAMEx"
+    DESCRIPTION  "template"
 	HOMEPAGE_URL "http://lameguy64.net/?page=psn00bsdk"
 )
 
-psn00bsdk_add_executable(xGAMEx GPREL source/main.c source/joypad.c source/display.c)
+psn00bsdk_add_executable(template GPREL source/main.c source/joypad.c source/display.c source/camera.c)
 
 psn00bsdk_add_cd_image(
 	iso      # Target name
-    xGAMEx # Output file name (= xGAMEx.bin + xGAMEx.cue)
+    template # Output file name (= template.bin + template.cue)
 	iso.xml  # Path to config file
-    DEPENDS xGAMEx system.cnf
+    DEPENDS template system.cnf
 )

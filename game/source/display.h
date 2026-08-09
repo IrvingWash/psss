@@ -5,7 +5,7 @@
 #include <sys/types.h>
 
 void display_init(void);
-void display_start_frame(void);
+void display_start_frame(const MATRIX *view_matrix);
 void display_finish_frame(void);
 
 void display_draw_mesh_of_g4(

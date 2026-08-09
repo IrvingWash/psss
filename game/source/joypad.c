@@ -30,5 +30,5 @@ void joypad_deinit(void) {
 bool joypad_is_pressed(PadButton button_to_check) {
     u_short pressed_button = *((u_short*) (pad_buffer[0] + 2));
 
-    return pressed_button & button_to_check;
+    return !(pressed_button & button_to_check);
 }

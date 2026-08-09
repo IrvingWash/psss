@@ -7,6 +7,7 @@
 
 #include "joypad.h"
 #include "display.h"
+#include "camera.h"
 
 #define CUBE_FACE_COUNT 6
 #define CUBE_VERTICES_PER_FACE 4
@@ -29,6 +30,8 @@ typedef struct Floor {
     SVECTOR vertices[4];
     short   faces[FLOOR_FACE_COUNT * FLOOR_VERTICES_PER_FACE];
 } Floor;
+
+Camera camera;
 
 Cube  cube  = {
     { 0, 0, 0 }, // Rotation
@@ -75,6 +78,11 @@ Floor floor = {
 void setup(void) {
     display_init();
     joypad_init();
+
+    camera.position.vx = 500;
+    camera.position.vy = -1000;
+    camera.position.vz = -1500;
+    camera.look_at = (MATRIX){0};
 }
 
 void deinit(void) {
@@ -82,10 +90,30 @@ void deinit(void) {
 }
 
 void update(void) {
-    // =========================================================================
-    // Cube
-    // =========================================================================
-    {
+    { // Camera
+        int speed = 50;
+
+        if (joypad_is_pressed(PAD_LEFT)) {
+             camera.position.vx -= speed;
+        }
+        if (joypad_is_pressed(PAD_RIGHT)) {
+            camera.position.vx += speed;
+        }
+        if (joypad_is_pressed(PAD_UP)) {
+            camera.position.vy -= speed;
+        }
+        if (joypad_is_pressed(PAD_DOWN)) {
+            camera.position.vy += speed;
+        }
+        if (joypad_is_pressed(PAD_CROSS)) {
+            camera.position.vz += speed;
+        }
+        if (joypad_is_pressed(PAD_CIRCLE)) {
+            camera.position.vz -= speed;
+        }
+    }
+
+    { // Cube
         // Update the position based on the acceleration and velocity
         cube.velocity.vx += cube.acceleration.vx;
         cube.velocity.vy += cube.acceleration.vy;
@@ -95,21 +123,15 @@ void update(void) {
         cube.position.vy += cube.velocity.vy;
         cube.position.vz += cube.velocity.vz;
 
-        if (cube.position.vy > 150) {
+        if (cube.position.vy + 200 > floor.position.vy) {
             cube.velocity.vy *= -1;
-        }
-
-        if (joypad_is_pressed(PAD_LEFT)) {
-            cube.rotation.vy += 20;
-        }
-        if (joypad_is_pressed(PAD_RIGHT)) {
-            cube.rotation.vy -= 20;
         }
     }
 }
 
 void render(void) {
-    display_start_frame();
+    camera_look_at(&camera, &cube.position, &(SVECTOR){0, -ONE, 0});
+    display_start_frame(&camera.look_at);
 
     display_draw_mesh_of_g4(
         cube.position,

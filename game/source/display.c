@@ -36,6 +36,7 @@ char   *next_primitive;
 POLY_G4 *poly_g4;
 POLY_F3 *poly_f3;
 MATRIX world_transform = {0};
+MATRIX view_transform  = {0};
 
 void display_init(void) {
     assert(BUFFER_COUNT == 2); // If this fails, many things should be changed
@@ -74,10 +75,11 @@ void display_init(void) {
     next_primitive = primitive_buffer[screen.current_buffer];
 }
 
-void display_start_frame(void) {
+void display_start_frame(const MATRIX *new_view_transform) {
     // Clear OT, so we can reuse it
     ClearOTagR(ordering_table[screen.current_buffer], OT_LENGTH);
     next_primitive = primitive_buffer[screen.current_buffer];
+    view_transform = *new_view_transform;
 }
 
 void display_finish_frame(void) {
@@ -111,8 +113,11 @@ void display_draw_mesh_of_g4(
     TransMatrix(&world_transform, &position);
     ScaleMatrix(&world_transform, &scale);
 
-    gte_SetRotMatrix(&world_transform);
-    gte_SetTransMatrix(&world_transform);
+    MATRIX transform = {0};
+    CompMatrixLV(&view_transform, &world_transform, &transform);
+
+    gte_SetRotMatrix(&transform);
+    gte_SetTransMatrix(&transform);
 
     // Iterating faces
     for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
@@ -175,8 +180,11 @@ void display_draw_mesh_of_f3(
     TransMatrix(&world_transform, &position);
     ScaleMatrix(&world_transform, &scale);
 
-    gte_SetRotMatrix(&world_transform);
-    gte_SetTransMatrix(&world_transform);
+    MATRIX transform = {0};
+    CompMatrixLV(&view_transform, &world_transform, &transform);
+
+    gte_SetRotMatrix(&transform);
+    gte_SetTransMatrix(&transform);
 
     for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
         poly_f3 = (POLY_F3*) next_primitive;
