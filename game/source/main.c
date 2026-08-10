@@ -9,6 +9,7 @@
 #include "joypad.h"
 #include "display.h"
 #include "cd.h"
+#include "texture.h"
 #include "camera.h"
 
 typedef struct Cube {
@@ -37,13 +38,18 @@ void setup(void) {
     camera.position.vz = -1500;
     camera.look_at = (MATRIX){0};
 
-    { // Load mesh
-        u_long length;
-        char *mesh_data = cd_load_file("\\ASSETS\\MODEL.BIN;1", &length);
+    { // Load cube mesh
+        u_long mesh_data_length;
+        char *mesh_data = cd_load_file("\\ASSETS\\MODEL.BIN;1", &mesh_data_length);
 
-        cube.mesh = display_create_mesh(mesh_data, length);
+        u_long bricks_texture_data_length;
+        u_long *bricks_texture_data = (u_long*) cd_load_file("\\ASSETS\\BRICKS.TIM;1", &bricks_texture_data_length);
+
+        cube.mesh = display_create_mesh(mesh_data);
+        cube.mesh.texture = texture_create(bricks_texture_data).tim;
 
         cd_unload_file(mesh_data);
+        cd_unload_file((char*) bricks_texture_data);
     }
 }
 
@@ -82,7 +88,7 @@ void render(void) {
     camera_look_at(&camera, &cube.position, &(SVECTOR){0, -ONE, 0});
     display_start_frame(&camera.look_at);
 
-    display_draw_mesh_of_f4(
+    display_draw_mesh_of_ft4(
         cube.position,
         cube.scale,
         cube.rotation,

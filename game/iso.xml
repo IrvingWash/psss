@@ -70,6 +70,7 @@
 			<!--<file name="TEMPLATE.MAP"	type="data" source="template.map" />-->
 			<dir name="ASSETS">
 				<file name="MODEL.BIN" type="data" source="${PROJECT_SOURCE_DIR}/assets/model.bin" />
+                <file name="BRICKS.TIM" type="data" source="${PROJECT_SOURCE_DIR}/assets/bricks.TIM" />
 			</dir>
 
 			<dummy sectors="1024"/>

@@ -35,9 +35,7 @@ char   primitive_buffer[BUFFER_COUNT][PRIMITIVE_BUFFER_SIZE] = {0};
 char   *next_primitive;
 
 // These are reused per mesh
-POLY_G4 *poly_g4;
-POLY_F3 *poly_f3;
-POLY_F4 *poly_f4;
+POLY_FT4 *poly_ft4;
 MATRIX world_transform = {0};
 MATRIX view_transform  = {0};
 
@@ -98,7 +96,7 @@ void display_finish_frame(void) {
     screen.current_buffer = !screen.current_buffer;
 }
 
-void display_draw_mesh_of_f4(
+void display_draw_mesh_of_ft4(
     VECTOR position,
     VECTOR scale,
     SVECTOR rotation,
@@ -118,10 +116,18 @@ void display_draw_mesh_of_f4(
     // Iterating faces
     // int q = 0;
     for (int i = 0, q = 0; i < mesh->index_count; i += 4, q++) { // 4, because f4
-        poly_f4 = (POLY_F4*) next_primitive;
-        setPolyF4(poly_f4);
+        poly_ft4 = (POLY_FT4*) next_primitive;
+        setPolyFT4(poly_ft4);
 
-        setRGB0(poly_f4, mesh->colors[q].r, mesh->colors[q].g, mesh->colors[q].b);
+        setRGB0(poly_ft4, 128, 128, 128);
+
+        poly_ft4->u0 = 0;  poly_ft4->v0 = 0;
+        poly_ft4->u1 = 63; poly_ft4->v1 = 0;
+        poly_ft4->u2 = 0;  poly_ft4->v2 = 63;
+        poly_ft4->u3 = 63; poly_ft4->v3 = 63;
+
+        poly_ft4->tpage = getTPage(mesh->texture.mode & 0x3, 0, mesh->texture.prect->x, mesh->texture.prect->y);
+        poly_ft4->clut = getClut(mesh->texture.crect->x, mesh->texture.crect->y);
 
         // Load the vertices of this face
         gte_ldv3(
@@ -147,73 +153,21 @@ void display_draw_mesh_of_f4(
         }
 
         // Set transformed vertices back
-        gte_stsxy0(&poly_f4->x0);
-        gte_stsxy1(&poly_f4->x1);
-        gte_stsxy2(&poly_f4->x2);
+        gte_stsxy0(&poly_ft4->x0);
+        gte_stsxy1(&poly_ft4->x1);
+        gte_stsxy2(&poly_ft4->x2);
 
         // Compute the last vertex
         gte_ldv0(&mesh->vertices[mesh->indices[i + 3]]);
         gte_rtps();
-        gte_stsxy(&poly_f4->x3);
+        gte_stsxy(&poly_ft4->x3);
 
-        addPrim(ordering_table[screen.current_buffer][average_z], poly_f4);
-        next_primitive += sizeof(POLY_F4);
+        addPrim(ordering_table[screen.current_buffer][average_z], poly_ft4);
+        next_primitive += sizeof(POLY_FT4);
     }
 }
 
-// void display_draw_mesh_of_f3(
-//     VECTOR position,
-//     VECTOR scale,
-//     SVECTOR rotation,
-//     const Display_Mesh *mesh,
-// ) {
-//     RotMatrix(&rotation, &world_transform);
-//     TransMatrix(&world_transform, &position);
-//     ScaleMatrix(&world_transform, &scale);
-//
-//     MATRIX transform = {0};
-//     CompMatrixLV(&view_transform, &world_transform, &transform);
-//
-//     gte_SetRotMatrix(&transform);
-//     gte_SetTransMatrix(&transform);
-//
-//     for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
-//         poly_f3 = (POLY_F3*) next_primitive;
-//         setPolyF3(poly_f3);
-//         setRGB0(poly_f3, 255, 255, 255);
-//
-//         gte_ldv3(
-//             &vertices[faces[i + 0]],
-//             &vertices[faces[i + 1]],
-//             &vertices[faces[i + 2]]
-//         );
-//         gte_rtpt();
-//
-//         int normal_clip;
-//         gte_nclip();
-//         gte_stopz(&normal_clip);
-//         if (normal_clip < 0) {
-//             continue;
-//         }
-//
-//         int average_z;
-//         gte_avsz3();
-//         gte_stotz(&average_z); // Get result
-//         if (average_z >= OT_LENGTH || average_z < 0) {
-//             continue;
-//         }
-//
-//         gte_stsxy0(&poly_f3->x0);
-//         gte_stsxy1(&poly_f3->x1);
-//         gte_stsxy2(&poly_f3->x2);
-//
-//         addPrim(ordering_table[screen.current_buffer][average_z], poly_f3);
-//         next_primitive += sizeof(POLY_F3);
-//     }
-// }
-
-
-Display_Mesh display_create_mesh(const char *mesh_data, u_long length) {
+Display_Mesh display_create_mesh(const char *mesh_data) {
     Display_Mesh mesh = {0};
 
     u_long byte_counter = 0;
