@@ -68,6 +68,9 @@
 				or global variable by its name.
 			-->
 			<!--<file name="TEMPLATE.MAP"	type="data" source="template.map" />-->
+			<dir name="ASSETS">
+				<file name="MODEL.BIN" type="data" source="${PROJECT_SOURCE_DIR}/assets/model.bin" />
+			</dir>
 
 			<dummy sectors="1024"/>
 		</directory_tree>

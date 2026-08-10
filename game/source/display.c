@@ -2,10 +2,12 @@
 
 #include <stdbool.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <psxgpu.h>
 #include <sys/types.h>
 #include <psxgte.h>
 #include <inline_c.h>
+#include "utils.h"
 
 #define SCREEN_RES_X 320
 #define SCREEN_RES_Y 240
@@ -35,6 +37,7 @@ char   *next_primitive;
 // These are reused per mesh
 POLY_G4 *poly_g4;
 POLY_F3 *poly_f3;
+POLY_F4 *poly_f4;
 MATRIX world_transform = {0};
 MATRIX view_transform  = {0};
 
@@ -95,18 +98,11 @@ void display_finish_frame(void) {
     screen.current_buffer = !screen.current_buffer;
 }
 
-void display_draw_mesh_of_g4(
+void display_draw_mesh_of_f4(
     VECTOR position,
     VECTOR scale,
     SVECTOR rotation,
-    int face_count,
-    int vertices_per_face,
-    u_short color0[3],
-    u_short color1[3],
-    u_short color2[3],
-    u_short color3[3],
-    SVECTOR *vertices,
-    short *faces
+    const Display_Mesh *mesh
 ) {
     // Prepare transforms
     RotMatrix(&rotation, &world_transform);
@@ -120,19 +116,18 @@ void display_draw_mesh_of_g4(
     gte_SetTransMatrix(&transform);
 
     // Iterating faces
-    for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
-        poly_g4 = (POLY_G4*) next_primitive;
-        setPolyG4(poly_g4);
-        setRGB0(poly_g4, color0[0], color0[1], color0[2]);
-        setRGB1(poly_g4, color1[0], color1[1], color1[2]);
-        setRGB2(poly_g4, color2[0], color2[1], color2[2]);
-        setRGB3(poly_g4, color3[0], color3[1], color3[2]);
+    // int q = 0;
+    for (int i = 0, q = 0; i < mesh->index_count; i += 4, q++) { // 4, because f4
+        poly_f4 = (POLY_F4*) next_primitive;
+        setPolyF4(poly_f4);
+
+        setRGB0(poly_f4, mesh->colors[q].r, mesh->colors[q].g, mesh->colors[q].b);
 
         // Load the vertices of this face
         gte_ldv3(
-            &vertices[faces[i + 0]],
-            &vertices[faces[i + 1]],
-            &vertices[faces[i + 2]]
+            &mesh->vertices[mesh->indices[i + 0]],
+            &mesh->vertices[mesh->indices[i + 1]],
+            &mesh->vertices[mesh->indices[i + 2]]
         );
         gte_rtpt(); // Rotation, translation, perspective on the loaded vertices
 
@@ -152,71 +147,108 @@ void display_draw_mesh_of_g4(
         }
 
         // Set transformed vertices back
-        gte_stsxy0(&poly_g4->x0);
-        gte_stsxy1(&poly_g4->x1);
-        gte_stsxy2(&poly_g4->x2);
+        gte_stsxy0(&poly_f4->x0);
+        gte_stsxy1(&poly_f4->x1);
+        gte_stsxy2(&poly_f4->x2);
 
         // Compute the last vertex
-        gte_ldv0(&vertices[faces[i + 3]]);
+        gte_ldv0(&mesh->vertices[mesh->indices[i + 3]]);
         gte_rtps();
-        gte_stsxy(&poly_g4->x3);
+        gte_stsxy(&poly_f4->x3);
 
-        addPrim(ordering_table[screen.current_buffer][average_z], poly_g4);
-        next_primitive += sizeof(POLY_G4);
+        addPrim(ordering_table[screen.current_buffer][average_z], poly_f4);
+        next_primitive += sizeof(POLY_F4);
     }
 }
 
-void display_draw_mesh_of_f3(
-    VECTOR position,
-    VECTOR scale,
-    SVECTOR rotation,
-    int face_count,
-    int vertices_per_face,
-    u_short color[3],
-    SVECTOR *vertices,
-    short *faces
-) {
-    RotMatrix(&rotation, &world_transform);
-    TransMatrix(&world_transform, &position);
-    ScaleMatrix(&world_transform, &scale);
+// void display_draw_mesh_of_f3(
+//     VECTOR position,
+//     VECTOR scale,
+//     SVECTOR rotation,
+//     const Display_Mesh *mesh,
+// ) {
+//     RotMatrix(&rotation, &world_transform);
+//     TransMatrix(&world_transform, &position);
+//     ScaleMatrix(&world_transform, &scale);
+//
+//     MATRIX transform = {0};
+//     CompMatrixLV(&view_transform, &world_transform, &transform);
+//
+//     gte_SetRotMatrix(&transform);
+//     gte_SetTransMatrix(&transform);
+//
+//     for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
+//         poly_f3 = (POLY_F3*) next_primitive;
+//         setPolyF3(poly_f3);
+//         setRGB0(poly_f3, 255, 255, 255);
+//
+//         gte_ldv3(
+//             &vertices[faces[i + 0]],
+//             &vertices[faces[i + 1]],
+//             &vertices[faces[i + 2]]
+//         );
+//         gte_rtpt();
+//
+//         int normal_clip;
+//         gte_nclip();
+//         gte_stopz(&normal_clip);
+//         if (normal_clip < 0) {
+//             continue;
+//         }
+//
+//         int average_z;
+//         gte_avsz3();
+//         gte_stotz(&average_z); // Get result
+//         if (average_z >= OT_LENGTH || average_z < 0) {
+//             continue;
+//         }
+//
+//         gte_stsxy0(&poly_f3->x0);
+//         gte_stsxy1(&poly_f3->x1);
+//         gte_stsxy2(&poly_f3->x2);
+//
+//         addPrim(ordering_table[screen.current_buffer][average_z], poly_f3);
+//         next_primitive += sizeof(POLY_F3);
+//     }
+// }
 
-    MATRIX transform = {0};
-    CompMatrixLV(&view_transform, &world_transform, &transform);
 
-    gte_SetRotMatrix(&transform);
-    gte_SetTransMatrix(&transform);
+Display_Mesh display_create_mesh(const char *mesh_data, u_long length) {
+    Display_Mesh mesh = {0};
 
-    for (int i = 0; i < face_count * vertices_per_face; i += vertices_per_face) {
-        poly_f3 = (POLY_F3*) next_primitive;
-        setPolyF3(poly_f3);
-        setRGB0(poly_f3, 255, 255, 255);
+    u_long byte_counter = 0;
 
-        gte_ldv3(
-            &vertices[faces[i + 0]],
-            &vertices[faces[i + 1]],
-            &vertices[faces[i + 2]]
-        );
-        gte_rtpt();
-
-        int normal_clip;
-        gte_nclip();
-        gte_stopz(&normal_clip);
-        if (normal_clip < 0) {
-            continue;
-        }
-
-        int average_z;
-        gte_avsz3();
-        gte_stotz(&average_z); // Get result
-        if (average_z >= OT_LENGTH || average_z < 0) {
-            continue;
-        }
-
-        gte_stsxy0(&poly_f3->x0);
-        gte_stsxy1(&poly_f3->x1);
-        gte_stsxy2(&poly_f3->x2);
-
-        addPrim(ordering_table[screen.current_buffer][average_z], poly_f3);
-        next_primitive += sizeof(POLY_F3);
+    // Vertices
+    mesh.vertex_count = get_short_be(mesh_data, &byte_counter);
+    mesh.vertices = (SVECTOR*) malloc(sizeof(SVECTOR) * mesh.vertex_count);
+    for (int i = 0; i < mesh.vertex_count; i++) {
+        mesh.vertices[i].vx = get_short_be(mesh_data, &byte_counter);
+        mesh.vertices[i].vy = get_short_be(mesh_data, &byte_counter);
+        mesh.vertices[i].vz = get_short_be(mesh_data, &byte_counter);
     }
+
+    // Indices
+    mesh.index_count = get_short_be(mesh_data, &byte_counter) * 4; // @Todo! This is so stupd...
+    mesh.indices = (short*) malloc(sizeof(short) * mesh.index_count);
+    for (int i = 0; i < mesh.index_count; i++) {
+        mesh.indices[i] = get_short_be(mesh_data, &byte_counter);
+    }
+
+    // Colors
+    mesh.color_count = get_char(mesh_data, &byte_counter);
+    mesh.colors = (CVECTOR*) malloc(sizeof(CVECTOR) * mesh.color_count);
+    for (int i = 0; i < mesh.color_count; i++) {
+        mesh.colors[i].r  = get_char(mesh_data, &byte_counter);
+        mesh.colors[i].g  = get_char(mesh_data, &byte_counter);
+        mesh.colors[i].b  = get_char(mesh_data, &byte_counter);
+        mesh.colors[i].cd = get_char(mesh_data, &byte_counter);
+    }
+
+    return mesh;
+}
+
+void display_destroy_mesh(Display_Mesh *mesh) {
+    free(mesh->vertices);
+    free(mesh->indices);
+    free(mesh->colors);
 }
