@@ -3,7 +3,7 @@
 #include <stdbool.h>
 // PSn00bSDK
 #include <sys/types.h> // u_char, etc
-#include <psxgte.h>
+#include <psxgte.h> // For geometry
 
 #include "joypad.h"
 #include "display.h"
