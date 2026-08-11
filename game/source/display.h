@@ -5,6 +5,7 @@
 #include <psxgte.h>
 #include <sys/types.h>
 #include <psxgpu.h>
+#include "display_primitives.h"
 
 typedef struct Display_Mesh {
     char name[16];
@@ -19,6 +20,7 @@ typedef struct Display_Mesh {
 
     SVECTOR *vertices;
     SVECTOR *normals;
+    Primitive_Node *primitives;
 } Display_Mesh;
 
 void display_init(void);

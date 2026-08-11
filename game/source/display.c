@@ -8,6 +8,7 @@
 #include <psxgte.h>
 #include <inline_c.h>
 #include "utils.h"
+#include "display_primitives.h"
 
 #define SCREEN_RES_X 320
 #define SCREEN_RES_Y 240
