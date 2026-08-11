@@ -31,9 +31,9 @@
 
 #define TYPE_SPLINE        20
 
-#define TYPE_INFINITELIGHT 21
-#define TYPE_POINTLIGHT    22
-#define TYPE_SPOTLIGHT     23
+#define TYPE_INFINITE_LIGHT 21
+#define TYPE_POINT_LIGHT    22
+#define TYPE_SPOT_LIGHT     23
 
 typedef struct F3 {
    short   type;      /* Type    of primitive */
@@ -254,7 +254,7 @@ typedef struct LF2 {
    short   type;    /* Type   of  primitive */
    short   flag;
    short   lines;   /* Number of  lines     */
-   LineF2* line[2]; /* 2      GPU Primitive arrays for double buffer */
+   Line_F2* line[2]; /* 2      GPU Primitive arrays for double buffer */
 } LF2;
 
 typedef struct SPR {
@@ -315,9 +315,9 @@ typedef union Prm {
   GT4           *gt4;
   SPR           *spr;
   Spline        *spline;
-  PointLight    *pointLight;
-  SpotLight     *spotLight;
-  InfiniteLight *infiniteLight;
+  Point_Light    *point_light;
+  Spot_Light     *spot_light;
+  Infinite_Light *infinite_light;
   LSF3          *lsf3;
   LSFT3         *lsft3;
   LSF4          *lsf4;
@@ -327,11 +327,5 @@ typedef union Prm {
   LSG4          *lsg4;
   LSGT4         *lsgt4;
 } Prm;
-
-typedef struct Primitive_Node {
-  short type;
-  short flag;
-  Prm   *primitive;
-} Primitive_Node;
 
 #endif

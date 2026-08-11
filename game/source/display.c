@@ -17,8 +17,8 @@
 #define SCREEN_Z 400
 
 #define BUFFER_COUNT 2
-#define OT_LENGTH 2048
-#define PRIMITIVE_BUFFER_SIZE 2048
+#define OT_LENGTH 8192
+#define PRIMITIVE_BUFFER_SIZE 131072
 
 typedef struct {
     DRAWENV draw[BUFFER_COUNT];
@@ -35,9 +35,6 @@ char   primitive_buffer[BUFFER_COUNT][PRIMITIVE_BUFFER_SIZE] = {0};
 // Pointes to the end of the last primitive in the primitive buffer
 char   *next_primitive;
 
-// These are reused per mesh
-POLY_FT4 *poly_ft4;
-MATRIX world_transform = {0};
 MATRIX view_transform  = {0};
 
 void display_init(void) {
@@ -97,76 +94,134 @@ void display_finish_frame(void) {
     screen.current_buffer = !screen.current_buffer;
 }
 
-// void display_draw_mesh_of_ft4(
-//     VECTOR position,
-//     VECTOR scale,
-//     SVECTOR rotation,
-//     const Display_Mesh *mesh
-// ) {
-//     // Prepare transforms
-//     RotMatrix(&rotation, &world_transform);
-//     TransMatrix(&world_transform, &position);
-//     ScaleMatrix(&world_transform, &scale);
-//
-//     MATRIX transform = {0};
-//     CompMatrixLV(&view_transform, &world_transform, &transform);
-//
-//     gte_SetRotMatrix(&transform);
-//     gte_SetTransMatrix(&transform);
-//
-//     // Iterating faces
-//     // int q = 0;
-//     for (int i = 0, q = 0; i < mesh->index_count; i += 4, q++) { // 4, because f4
-//         poly_ft4 = (POLY_FT4*) next_primitive;
-//         setPolyFT4(poly_ft4);
-//
-//         setRGB0(poly_ft4, 128, 128, 128);
-//
-//         poly_ft4->u0 = 0;  poly_ft4->v0 = 0;
-//         poly_ft4->u1 = 63; poly_ft4->v1 = 0;
-//         poly_ft4->u2 = 0;  poly_ft4->v2 = 63;
-//         poly_ft4->u3 = 63; poly_ft4->v3 = 63;
-//
-//         poly_ft4->tpage = getTPage(mesh->texture.mode & 0x3, 0, mesh->texture.prect->x, mesh->texture.prect->y);
-//         poly_ft4->clut = getClut(mesh->texture.crect->x, mesh->texture.crect->y);
-//
-//         // Load the vertices of this face
-//         gte_ldv3(
-//             &mesh->vertices[mesh->indices[i + 0]],
-//             &mesh->vertices[mesh->indices[i + 1]],
-//             &mesh->vertices[mesh->indices[i + 2]]
-//         );
-//         gte_rtpt(); // Rotation, translation, perspective on the loaded vertices
-//
-//
-//         int normal_clip;
-//         gte_nclip(); // Normal clip for backface culling
-//         gte_stopz(&normal_clip); // Get result
-//         if (normal_clip < 0) {
-//             continue; // Skipping this face because it is backfaced
-//         }
-//
-//         int average_z;
-//         gte_avsz4(); // Calculate average z for depth sorting
-//         gte_stotz(&average_z); // Get result
-//         if (average_z >= OT_LENGTH || average_z < 0) {
-//             continue; // Didn't pass the depth test.
-//         }
-//
-//         // Set transformed vertices back
-//         gte_stsxy0(&poly_ft4->x0);
-//         gte_stsxy1(&poly_ft4->x1);
-//         gte_stsxy2(&poly_ft4->x2);
-//
-//         // Compute the last vertex
-//         gte_ldv0(&mesh->vertices[mesh->indices[i + 3]]);
-//         gte_rtps();
-//         gte_stsxy(&poly_ft4->x3);
-//
-//         addPrim(ordering_table[screen.current_buffer][average_z], poly_ft4);
-//         next_primitive += sizeof(POLY_FT4);
-//     }
-// }
+void display_draw_mesh(
+    const Display_Mesh *mesh,
+    VECTOR position,
+    SVECTOR rotation,
+    VECTOR scale
+) {
+    { // Prepare transforms
+        MATRIX world_transform = {0};
+
+        RotMatrix(&rotation, &world_transform);
+        TransMatrix(&world_transform, &position);
+        ScaleMatrix(&world_transform, &scale);
+
+        MATRIX transform = {0};
+        CompMatrixLV(&view_transform, &world_transform, &transform);
+
+        gte_SetRotMatrix(&transform);
+        gte_SetTransMatrix(&transform);
+    }
+
+    for (int i = 0; i < mesh->primitive_count; i++) {
+        switch (mesh->primitives[i].type) {
+            case TYPE_F3:
+            case TYPE_FT3:
+            case TYPE_G3:
+            case TYPE_GT3: {
+                F3 *prm = (F3*) mesh->primitives[i].primitive;
+                POLY_F3 *poly = (POLY_F3*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Load vertices back
+                gte_stsxy3(&poly->x0, &poly->x1, &poly->x2);
+
+                int otz = 0;
+                gte_avsz3();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz < 0) { // Depth test
+                    continue;
+                }
+
+                setPolyF3(poly);
+                // @Todo
+                // poly->r0 = prm->color.r;
+                // poly->g0 = prm->color.g;
+                // poly->b0 = prm->color.b;
+                poly->r0 = 255;
+                poly->g0 = 255;
+                poly->b0 = 0;
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_F3);
+
+                break;
+            }
+            case TYPE_F4:
+            case TYPE_FT4:
+            case TYPE_G4:
+            case TYPE_GT4: {
+                F4 *prm = (F4*) mesh->primitives[i].primitive;
+                POLY_F4 *poly = (POLY_F4*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Transform fourth vertex
+                gte_stsxy0(&poly->x0);
+                gte_ldv0(&mesh->vertices[prm->coords[3]]);
+                gte_rtps();
+                gte_stsxy3(&poly->x1, &poly->x2, &poly->x3);
+
+                int otz = 0;
+                gte_avsz4();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz <= 0) { // Depth test
+                    continue;
+                }
+
+                setPolyF4(poly);
+                // @Todo
+                // poly->r0 = prm->color.r;
+                // poly->g0 = prm->color.g;
+                // poly->b0 = prm->color.b;
+                poly->r0 = 255;
+                poly->g0 = 0;
+                poly->b0 = 255;
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_F4);
+
+                break;
+            }
+        }
+    }
+}
 
 // byte - name[16]
 // short - vertex_count
@@ -223,6 +278,228 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
         mesh.normals[i].vy = get_short_be(prm_data, &byte_counter);
         mesh.normals[i].vz = get_short_be(prm_data, &byte_counter);
         byte_counter += 2;
+    }
+
+    mesh.primitives = malloc(mesh.primitive_count * sizeof(Primitive_Node));
+    for (int i = 0; i < mesh.primitive_count; i++) {
+        mesh.primitives[i].type = get_short_be(prm_data, &byte_counter);
+        mesh.primitives[i].flag = get_short_be(prm_data, &byte_counter);
+
+        switch (mesh.primitives[i].type) {
+            case TYPE_F3: {
+                F3 *prm;
+                mesh.primitives[i].primitive = (Prm*) malloc(sizeof(F3));
+                prm            = (F3*) mesh.primitives[i].primitive;
+                prm->type      = TYPE_F3;
+                prm->coords[0] = get_short_be(prm_data, &byte_counter);
+                prm->coords[1] = get_short_be(prm_data, &byte_counter);
+                prm->coords[2] = get_short_be(prm_data, &byte_counter);
+                prm->pad1      = get_short_be(prm_data, &byte_counter);
+                prm->color.r   = get_char(prm_data, &byte_counter);
+                prm->color.g   = get_char(prm_data, &byte_counter);
+                prm->color.b   = get_char(prm_data, &byte_counter);
+                prm->color.cd  = get_char(prm_data, &byte_counter);
+                break;
+            }
+            case TYPE_FT3: {
+                FT3 *prm;
+                printf("Loading primitive type FT3 \n");
+                mesh.primitives[i].primitive = (Prm*) malloc(sizeof(FT3));
+                prm            = (FT3*) mesh.primitives[i].primitive;
+                prm->type      = TYPE_FT3;
+                prm->coords[0] = get_short_be(prm_data, &byte_counter);
+                prm->coords[1] = get_short_be(prm_data, &byte_counter);
+                prm->coords[2] = get_short_be(prm_data, &byte_counter);
+                prm->texture   = get_short_be(prm_data, &byte_counter);
+                prm->clut      = get_short_be(prm_data, &byte_counter);
+                prm->tpage     = get_short_be(prm_data, &byte_counter);
+                prm->u0        = get_char(prm_data, &byte_counter);
+                prm->v0        = get_char(prm_data, &byte_counter);
+                prm->u1        = get_char(prm_data, &byte_counter);
+                prm->v1        = get_char(prm_data, &byte_counter);
+                prm->u2        = get_char(prm_data, &byte_counter);
+                prm->v2        = get_char(prm_data, &byte_counter);
+                prm->pad1      = get_short_be(prm_data, &byte_counter);
+                prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+                break;
+            }
+          case TYPE_F4: {
+            F4 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(F4));
+            prm            = (F4*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_F4;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->coords[3] = get_short_be(prm_data, &byte_counter);
+            prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_FT4: {
+            FT4 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(FT4));
+            prm            = (FT4*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_FT4;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->coords[3] = get_short_be(prm_data, &byte_counter);
+            prm->texture   = get_short_be(prm_data, &byte_counter);
+            prm->clut      = get_short_be(prm_data, &byte_counter);
+            prm->tpage     = get_short_be(prm_data, &byte_counter);
+            prm->u0        = get_char(prm_data, &byte_counter);
+            prm->v0        = get_char(prm_data, &byte_counter);
+            prm->u1        = get_char(prm_data, &byte_counter);
+            prm->v1        = get_char(prm_data, &byte_counter);
+            prm->u2        = get_char(prm_data, &byte_counter);
+            prm->v2        = get_char(prm_data, &byte_counter);
+            prm->u3        = get_char(prm_data, &byte_counter);
+            prm->v3        = get_char(prm_data, &byte_counter);
+            prm->pad1      = get_short_be(prm_data, &byte_counter);
+            prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_G3: {
+            G3 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(G3));
+            prm            = (G3*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_G3;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->pad1      = get_short_be(prm_data, &byte_counter);
+            prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_GT3: {
+            GT3 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(GT3));
+            prm            = (GT3*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_GT3;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->texture   = get_short_be(prm_data, &byte_counter);
+            prm->clut      = get_short_be(prm_data, &byte_counter);
+            prm->tpage     = get_short_be(prm_data, &byte_counter);
+            prm->u0        = get_char(prm_data, &byte_counter);
+            prm->v0        = get_char(prm_data, &byte_counter);
+            prm->u1        = get_char(prm_data, &byte_counter);
+            prm->v1        = get_char(prm_data, &byte_counter);
+            prm->u2        = get_char(prm_data, &byte_counter);
+            prm->v2        = get_char(prm_data, &byte_counter);
+            prm->pad1      = get_short_be(prm_data, &byte_counter);
+            prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_G4: {
+            G4 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(G4));
+            prm            = (G4*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_G4;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->coords[3] = get_short_be(prm_data, &byte_counter);
+            prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[3]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_GT4: {
+            GT4 *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(GT4));
+            prm            = (GT4*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_GT4;
+            prm->coords[0] = get_short_be(prm_data, &byte_counter);
+            prm->coords[1] = get_short_be(prm_data, &byte_counter);
+            prm->coords[2] = get_short_be(prm_data, &byte_counter);
+            prm->coords[3] = get_short_be(prm_data, &byte_counter);
+            prm->texture   = get_short_be(prm_data, &byte_counter);
+            prm->clut      = get_short_be(prm_data, &byte_counter);
+            prm->tpage     = get_short_be(prm_data, &byte_counter);
+            prm->u0        = get_char(prm_data, &byte_counter);
+            prm->v0        = get_char(prm_data, &byte_counter);
+            prm->u1        = get_char(prm_data, &byte_counter);
+            prm->v1        = get_char(prm_data, &byte_counter);
+            prm->u2        = get_char(prm_data, &byte_counter);
+            prm->v2        = get_char(prm_data, &byte_counter);
+            prm->u3        = get_char(prm_data, &byte_counter);
+            prm->v3        = get_char(prm_data, &byte_counter);
+            prm->pad1      = get_short_be(prm_data, &byte_counter);
+            prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            prm->color[3]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_TSPR:
+          case TYPE_BSPR: {
+            SPR *prm;
+            mesh.primitives[i].primitive = (Prm*) malloc(sizeof(SPR));
+            prm            = (SPR*) mesh.primitives[i].primitive;
+            prm->type      = TYPE_TSPR;
+            prm->coord     = get_short_be(prm_data, &byte_counter);
+            prm->width     = get_short_be(prm_data, &byte_counter);
+            prm->height    = get_short_be(prm_data, &byte_counter);
+            prm->texture   = get_short_be(prm_data, &byte_counter);
+            prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+            break;
+          }
+          case TYPE_SPLINE: {
+            byte_counter += 52;
+            break;
+          }
+          case TYPE_POINT_LIGHT: {
+            byte_counter += 24;
+            break;
+          }
+          case TYPE_SPOT_LIGHT: {
+            byte_counter += 36;
+            break;
+          }
+          case TYPE_INFINITE_LIGHT: {
+            byte_counter += 12;
+            break;
+          }
+          case TYPE_LSF3: {
+            byte_counter += 12;
+            break;
+          }
+          case TYPE_LSFT3: {
+            byte_counter += 24;
+            break;
+          }
+          case TYPE_LSF4: {
+            byte_counter += 16;
+            break;
+          }
+          case TYPE_LSFT4: {
+            byte_counter += 28;
+            break;
+          }
+          case TYPE_LSG3: {
+            byte_counter += 24;
+            break;
+          }
+          case TYPE_LSGT3: {
+            byte_counter += 36;
+            break;
+          }
+          case TYPE_LSG4: {
+            byte_counter += 32;
+            break;
+          }
+          case TYPE_LSGT4: {
+            byte_counter += 42;
+            break;
+          }
+        }
     }
 
     return mesh;
