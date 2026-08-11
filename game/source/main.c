@@ -12,87 +12,64 @@
 #include "texture.h"
 #include "camera.h"
 
-typedef struct Cube {
+typedef struct Entity {
+    VECTOR position;
     SVECTOR rotation;
-    VECTOR  position;
-    VECTOR  scale;
+    VECTOR scale;
+
     Display_Mesh mesh;
-} Cube;
+} Entity;
 
-Camera camera;
+Camera camera = {0};
 
-Cube  cube  = {
-    { 0, 0, 0 }, // Rotation
-    { 0, -400, 1800 }, // Position
-    { ONE, ONE, ONE }, // Scale
-    {0}, // Mesh
-};
+Entity entity = {0};
 
 void setup(void) {
     display_init();
     joypad_init();
     cd_init();
 
-    camera.position.vx = 500;
-    camera.position.vy = -1000;
-    camera.position.vz = -1500;
-    camera.look_at = (MATRIX){0};
+    camera.position.vy = -600;
+    camera.position.vz = -900;
 
-    { // Load cube mesh
-        u_long mesh_data_length;
-        char *mesh_data = cd_load_file("\\ASSETS\\MODEL.BIN;1", &mesh_data_length);
+    {
+        entity.scale = (VECTOR) {ONE, ONE, ONE};
 
-        u_long bricks_texture_data_length;
-        u_long *bricks_texture_data = (u_long*) cd_load_file("\\ASSETS\\BRICKS.TIM;1", &bricks_texture_data_length);
+        u_long all_ships_prm_length;
+        char *all_ships_prm = cd_load_file("\\ASSETS\\ALLSH.PRM;1", &all_ships_prm_length);
 
-        cube.mesh = display_create_mesh(mesh_data);
-        cube.mesh.texture = texture_create(bricks_texture_data).tim;
+        entity.mesh = display_create_mesh_from_prm(all_ships_prm);
+        entity.position = entity.mesh.origin;
 
-        cd_unload_file(mesh_data);
-        cd_unload_file((char*) bricks_texture_data);
+        cd_unload_file(all_ships_prm);
     }
 }
 
 void deinit(void) {
-    display_destroy_mesh(&cube.mesh);
+    display_destroy_mesh(&entity.mesh);
 
     joypad_deinit();
 }
 
 void update(void) {
-    { // Camera
-        int speed = 50;
+    camera_look_at(&camera, &entity.position, &(SVECTOR) {0, -ONE, 0});
 
-        if (joypad_is_pressed(PAD_LEFT)) {
-             camera.position.vx -= speed;
-        }
-        if (joypad_is_pressed(PAD_RIGHT)) {
-            camera.position.vx += speed;
-        }
-        if (joypad_is_pressed(PAD_UP)) {
-            camera.position.vy -= speed;
-        }
-        if (joypad_is_pressed(PAD_DOWN)) {
-            camera.position.vy += speed;
-        }
-        if (joypad_is_pressed(PAD_CROSS)) {
-            camera.position.vz += speed;
-        }
-        if (joypad_is_pressed(PAD_CIRCLE)) {
-            camera.position.vz -= speed;
-        }
+    if (joypad_is_pressed(PAD_LEFT)) {
+        entity.rotation.vy -= 15;
+    }
+    if (joypad_is_pressed(PAD_RIGHT)) {
+        entity.rotation.vy += 15;
     }
 }
 
 void render(void) {
-    camera_look_at(&camera, &cube.position, &(SVECTOR){0, -ONE, 0});
     display_start_frame(&camera.look_at);
 
-    display_draw_mesh_of_ft4(
-        cube.position,
-        cube.scale,
-        cube.rotation,
-        &cube.mesh
+    display_draw_mesh(
+        &entity.mesh,
+        entity.position,
+        entity.rotation,
+        entity.scale
     );
 
     display_finish_frame();

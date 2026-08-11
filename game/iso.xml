@@ -69,8 +69,7 @@
 			-->
 			<!--<file name="TEMPLATE.MAP"	type="data" source="template.map" />-->
 			<dir name="ASSETS">
-				<file name="MODEL.BIN" type="data" source="${PROJECT_SOURCE_DIR}/assets/model.bin" />
-                <file name="BRICKS.TIM" type="data" source="${PROJECT_SOURCE_DIR}/assets/bricks.TIM" />
+				<file name="ALLSH.PRM" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/COMMON/ALLSH.PRM" />
 			</dir>
 
 			<dummy sectors="1024"/>
