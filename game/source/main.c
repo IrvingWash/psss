@@ -21,24 +21,26 @@ typedef struct Entity {
 
 Camera camera = {0};
 
-Entity ship = {0};
+Entity sophia = {0};
+Entity rescue = {0};
 
-Entity create_entity(void) {
+Entity create_entity(const char *prm_path, const char *cmp_path) {
     Entity entity = {0};
 
     entity.scale = (VECTOR) {ONE, ONE, ONE};
 
-    u_long all_ships_cmp_length;
-    char *all_ships_cmp = cd_load_file("\\ASSETS\\ALLSH.CMP;1", &all_ships_cmp_length);
-    texture_create_from_cmp(all_ships_cmp);
+    u_long cmp_length;
+    char *cmp = cd_load_file(cmp_path, &cmp_length);
+    u_long texture_start = get_texture_count();
+    texture_create_from_cmp(cmp);
 
-    u_long all_ships_prm_length;
-    char *all_ships_prm = cd_load_file("\\ASSETS\\ALLSH.PRM;1", &all_ships_prm_length);
-    entity.mesh = display_create_mesh_from_prm(all_ships_prm);
+    u_long prm_length;
+    char *prm = cd_load_file(prm_path, &prm_length);
+    entity.mesh = display_create_mesh_from_prm(prm, texture_start);
     entity.position = entity.mesh.origin;
 
-    cd_unload_file(all_ships_prm);
-    cd_unload_file(all_ships_cmp);
+    cd_unload_file(prm);
+    cd_unload_file(cmp);
 
     return entity;
 }
@@ -49,25 +51,29 @@ void setup(void) {
     cd_init();
 
     camera.position.vy = -600;
-    camera.position.vz = -900;
+    camera.position.vz = -1500;
 
-    ship = create_entity();
+    sophia = create_entity("\\ASSETS\\ALLSH.PRM;1", "\\ASSETS\\ALLSH.CMP;1");
+    rescue = create_entity("\\ASSETS\\RESCU.PRM;1", "\\ASSETS\\RESCU.CMP;1");
 }
 
 void deinit(void) {
-    display_destroy_mesh(&ship.mesh);
+    display_destroy_mesh(&sophia.mesh);
+    display_destroy_mesh(&rescue.mesh);
 
     joypad_deinit();
 }
 
 void update(void) {
-    camera_look_at(&camera, &ship.position, &(SVECTOR) {0, -ONE, 0});
+    camera_look_at(&camera, &sophia.position, &(SVECTOR) {0, -ONE, 0});
 
     if (joypad_is_pressed(PAD_LEFT)) {
-        ship.rotation.vy -= 15;
+        sophia.rotation.vy -= 15;
+        rescue.rotation.vy -= 15;
     }
     if (joypad_is_pressed(PAD_RIGHT)) {
-        ship.rotation.vy += 15;
+        sophia.rotation.vy += 15;
+        rescue.rotation.vy += 15;
     }
 }
 
@@ -75,10 +81,17 @@ void render(void) {
     display_start_frame(&camera.look_at);
 
     display_draw_mesh(
-        &ship.mesh,
-        ship.position,
-        ship.rotation,
-        ship.scale
+        &sophia.mesh,
+        sophia.position,
+        sophia.rotation,
+        sophia.scale
+    );
+
+    display_draw_mesh(
+        &rescue.mesh,
+        rescue.position,
+        rescue.rotation,
+        rescue.scale
     );
 
     display_finish_frame();

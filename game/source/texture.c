@@ -16,6 +16,10 @@ Texture* get_texture(u_int index) {
     return texture_storage[index];
 }
 
+u_long get_texture_count() {
+    return texture_count;
+};
+
 Texture* upload_texture_to_vram(long tim_ptr) {
     Texture *texture = malloc(sizeof(Texture));
 

@@ -86,5 +86,6 @@ typedef struct TIM {
 void texture_create_from_cmp(char *cmp_data);
 
 Texture* get_texture(u_int index);
+u_long get_texture_count();
 
 #endif

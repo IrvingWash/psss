@@ -500,7 +500,7 @@ void display_draw_mesh(
 // byte - unused[48]
 // short - vertices[0].x
 // ...
-Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
+Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_start) {
     Display_Mesh mesh = {0};
 
     u_long byte_counter = 0;
@@ -583,6 +583,8 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
                 prm->pad1      = get_short_be(prm_data, &byte_counter);
                 prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
 
+                prm->texture += texture_start;
+
                 Texture *texture = get_texture(prm->texture);
                 u_short u_offset = texture->u0;
                 u_short v_offset = texture->v0;
@@ -632,6 +634,8 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->v3        = get_char(prm_data, &byte_counter);
             prm->pad1      = get_short_be(prm_data, &byte_counter);
             prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            prm->texture += texture_start;
 
             Texture *texture = get_texture(prm->texture);
             u_short u_offset = texture->u0;
@@ -685,6 +689,8 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            prm->texture += texture_start;
 
             Texture *texture = get_texture(prm->texture);
             u_short u_offset = texture->u0;
@@ -741,6 +747,8 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[3]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            prm->texture += texture_start;
 
             Texture *texture = get_texture(prm->texture);
             u_short u_offset = texture->u0;

@@ -33,7 +33,7 @@ void display_init(void);
 void display_start_frame(const MATRIX *view_matrix);
 void display_finish_frame(void);
 
-Display_Mesh display_create_mesh_from_prm(const char *prm_data);
+Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_start);
 void display_destroy_mesh(Display_Mesh *mesh);
 
 void display_draw_mesh(
