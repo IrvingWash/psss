@@ -70,6 +70,7 @@
 			<!--<file name="TEMPLATE.MAP"	type="data" source="template.map" />-->
 			<dir name="ASSETS">
 				<file name="ALLSH.PRM" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/COMMON/ALLSH.PRM" />
+                <file name="ALLSH.CMP" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/COMMON/ALLSH.CMP" />
 			</dir>
 
 			<dummy sectors="1024"/>

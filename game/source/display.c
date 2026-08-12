@@ -9,6 +9,7 @@
 #include <inline_c.h>
 #include "utils.h"
 #include "display_primitives.h"
+#include "texture.h"
 
 #define SCREEN_RES_X 320
 #define SCREEN_RES_Y 240
@@ -55,8 +56,8 @@ void display_init(void) {
     screen.draw[1].isbg = true;
 
     // Clear color
-    setRGB0(&screen.draw[0], 63, 0, 127);
-    setRGB0(&screen.draw[1], 63, 0, 127);
+    setRGB0(&screen.draw[0], 0, 0, 127);
+    setRGB0(&screen.draw[1], 0, 0, 127);
 
     // Initial buffer
     screen.current_buffer = 0;
@@ -116,10 +117,7 @@ void display_draw_mesh(
 
     for (int i = 0; i < mesh->primitive_count; i++) {
         switch (mesh->primitives[i].type) {
-            case TYPE_F3:
-            case TYPE_FT3:
-            case TYPE_G3:
-            case TYPE_GT3: {
+            case TYPE_F3: {
                 F3 *prm = (F3*) mesh->primitives[i].primitive;
                 POLY_F3 *poly = (POLY_F3*) next_primitive;
 
@@ -153,23 +151,149 @@ void display_draw_mesh(
                 }
 
                 setPolyF3(poly);
-                // @Todo
-                // poly->r0 = prm->color.r;
-                // poly->g0 = prm->color.g;
-                // poly->b0 = prm->color.b;
-                poly->r0 = 255;
-                poly->g0 = 255;
-                poly->b0 = 0;
+                setRGB0(poly, prm->color.r, prm->color.g, prm->color.b);
 
                 addPrim(&ordering_table[screen.current_buffer][otz], poly);
                 next_primitive += sizeof(POLY_F3);
 
                 break;
             }
-            case TYPE_F4:
-            case TYPE_FT4:
-            case TYPE_G4:
-            case TYPE_GT4: {
+            case TYPE_G3: {
+                G3 *prm = (G3*) mesh->primitives[i].primitive;
+                POLY_G3 *poly = (POLY_G3*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Load vertices back
+                gte_stsxy3(&poly->x0, &poly->x1, &poly->x2);
+
+                int otz = 0;
+                gte_avsz3();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz < 0) { // Depth test
+                    continue;
+                }
+
+                setPolyG3(poly);
+                setRGB0(poly, prm->color[0].r, prm->color[0].g, prm->color[0].b);
+                setRGB1(poly, prm->color[1].r, prm->color[1].g, prm->color[1].b);
+                setRGB2(poly, prm->color[2].r, prm->color[2].g, prm->color[2].b);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_G3);
+
+                break;
+            }
+            case TYPE_FT3: {
+                FT3 *prm = (FT3*) mesh->primitives[i].primitive;
+                POLY_FT3 *poly = (POLY_FT3*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Load vertices back
+                gte_stsxy3(&poly->x0, &poly->x1, &poly->x2);
+
+                int otz = 0;
+                gte_avsz3();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz < 0) { // Depth test
+                    continue;
+                }
+
+                setPolyFT3(poly);
+                setRGB0(poly, prm->color.r, prm->color.g, prm->color.b);
+
+                poly->tpage = prm->tpage;
+                poly->clut = prm->clut;
+                setUV3(poly, prm->u0, prm->v0, prm->u1, prm->v1, prm->u2, prm->v2);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_FT3);
+
+                break;
+            }
+            case TYPE_GT3: {
+                GT3 *prm = (GT3*) mesh->primitives[i].primitive;
+                POLY_GT3 *poly = (POLY_GT3*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Load vertices back
+                gte_stsxy3(&poly->x0, &poly->x1, &poly->x2);
+
+                int otz = 0;
+                gte_avsz3();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz < 0) { // Depth test
+                    continue;
+                }
+
+                setPolyGT3(poly);
+                setRGB0(poly, prm->color[0].r, prm->color[0].g, prm->color[0].b);
+                setRGB1(poly, prm->color[1].r, prm->color[1].g, prm->color[1].b);
+                setRGB2(poly, prm->color[2].r, prm->color[2].g, prm->color[2].b);
+
+                poly->tpage = prm->tpage;
+                poly->clut = prm->clut;
+                setUV3(poly, prm->u0, prm->v0, prm->u1, prm->v1, prm->u2, prm->v2);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_GT3);
+
+                break;
+            }
+            case TYPE_F4: {
                 F4 *prm = (F4*) mesh->primitives[i].primitive;
                 POLY_F4 *poly = (POLY_F4*) next_primitive;
 
@@ -206,16 +330,154 @@ void display_draw_mesh(
                 }
 
                 setPolyF4(poly);
-                // @Todo
-                // poly->r0 = prm->color.r;
-                // poly->g0 = prm->color.g;
-                // poly->b0 = prm->color.b;
-                poly->r0 = 255;
-                poly->g0 = 0;
-                poly->b0 = 255;
+                setRGB0(poly, prm->color.r, prm->color.g, prm->color.b);
 
                 addPrim(&ordering_table[screen.current_buffer][otz], poly);
                 next_primitive += sizeof(POLY_F4);
+
+                break;
+            }
+            case TYPE_FT4: {
+                FT4 *prm = (FT4*) mesh->primitives[i].primitive;
+                POLY_FT4 *poly = (POLY_FT4*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Transform fourth vertex
+                gte_stsxy0(&poly->x0);
+                gte_ldv0(&mesh->vertices[prm->coords[3]]);
+                gte_rtps();
+                gte_stsxy3(&poly->x1, &poly->x2, &poly->x3);
+
+                int otz = 0;
+                gte_avsz4();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz <= 0) { // Depth test
+                    continue;
+                }
+
+                setPolyFT4(poly);
+                setRGB0(poly, prm->color.r, prm->color.g, prm->color.b);
+                poly->tpage = prm->tpage;
+                poly->clut = prm->clut;
+                setUV4(poly, prm->u0, prm->v0, prm->u1, prm->v1, prm->u2, prm->v2, prm->u3, prm->v3);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_FT4);
+
+                break;
+            }
+            case TYPE_G4: {
+                G4 *prm = (G4*) mesh->primitives[i].primitive;
+                POLY_G4 *poly = (POLY_G4*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Transform fourth vertex
+                gte_stsxy0(&poly->x0);
+                gte_ldv0(&mesh->vertices[prm->coords[3]]);
+                gte_rtps();
+                gte_stsxy3(&poly->x1, &poly->x2, &poly->x3);
+
+                int otz = 0;
+                gte_avsz4();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz <= 0) { // Depth test
+                    continue;
+                }
+
+                setPolyG4(poly);
+                setRGB0(poly, prm->color[0].r, prm->color[0].g, prm->color[0].b);
+                setRGB1(poly, prm->color[1].r, prm->color[1].g, prm->color[1].b);
+                setRGB2(poly, prm->color[2].r, prm->color[2].g, prm->color[2].b);
+                setRGB3(poly, prm->color[3].r, prm->color[3].g, prm->color[3].b);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_G4);
+
+                break;
+            }
+            case TYPE_GT4: {
+                GT4 *prm = (GT4*) mesh->primitives[i].primitive;
+                POLY_GT4 *poly = (POLY_GT4*) next_primitive;
+
+                // Load vertices into GTE
+                gte_ldv0(&mesh->vertices[prm->coords[0]]);
+                gte_ldv1(&mesh->vertices[prm->coords[1]]);
+                gte_ldv2(&mesh->vertices[prm->coords[2]]);
+
+                // Transform
+                gte_rtpt();
+
+                { // Backface culling
+                    int nclip = 0;
+
+                    gte_nclip();
+                    gte_stopz(&nclip);
+
+                    if (nclip < 0) {
+                        continue;
+                    }
+                }
+
+                // Transform fourth vertex
+                gte_stsxy0(&poly->x0);
+                gte_ldv0(&mesh->vertices[prm->coords[3]]);
+                gte_rtps();
+                gte_stsxy3(&poly->x1, &poly->x2, &poly->x3);
+
+                int otz = 0;
+                gte_avsz4();
+                gte_stotz(&otz);
+                if (otz >= OT_LENGTH || otz <= 0) { // Depth test
+                    continue;
+                }
+
+                setPolyGT4(poly);
+                setRGB0(poly, prm->color[0].r, prm->color[0].g, prm->color[0].b);
+                setRGB1(poly, prm->color[1].r, prm->color[1].g, prm->color[1].b);
+                setRGB2(poly, prm->color[2].r, prm->color[2].g, prm->color[2].b);
+                setRGB3(poly, prm->color[3].r, prm->color[3].g, prm->color[3].b);
+                poly->tpage = prm->tpage;
+                poly->clut = prm->clut;
+                setUV4(poly, prm->u0, prm->v0, prm->u1, prm->v1, prm->u2, prm->v2, prm->u3, prm->v3);
+
+                addPrim(&ordering_table[screen.current_buffer][otz], poly);
+                next_primitive += sizeof(POLY_GT4);
 
                 break;
             }
@@ -303,7 +565,6 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             }
             case TYPE_FT3: {
                 FT3 *prm;
-                printf("Loading primitive type FT3 \n");
                 mesh.primitives[i].primitive = (Prm*) malloc(sizeof(FT3));
                 prm            = (FT3*) mesh.primitives[i].primitive;
                 prm->type      = TYPE_FT3;
@@ -321,6 +582,20 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
                 prm->v2        = get_char(prm_data, &byte_counter);
                 prm->pad1      = get_short_be(prm_data, &byte_counter);
                 prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+                Texture *texture = get_texture(prm->texture);
+                u_short u_offset = texture->u0;
+                u_short v_offset = texture->v0;
+
+                prm->u0 += u_offset;
+                prm->v0 += v_offset;
+                prm->u1 += u_offset;
+                prm->v1 += v_offset;
+                prm->u2 += u_offset;
+                prm->v2 += v_offset;
+                prm->tpage = texture->tpage;
+                prm->clut = texture->clut;
+
                 break;
             }
           case TYPE_F4: {
@@ -357,6 +632,22 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->v3        = get_char(prm_data, &byte_counter);
             prm->pad1      = get_short_be(prm_data, &byte_counter);
             prm->color     = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            Texture *texture = get_texture(prm->texture);
+            u_short u_offset = texture->u0;
+            u_short v_offset = texture->v0;
+
+            prm->u0 += u_offset;
+            prm->v0 += v_offset;
+            prm->u1 += u_offset;
+            prm->v1 += v_offset;
+            prm->u2 += u_offset;
+            prm->v2 += v_offset;
+            prm->u3 += u_offset;
+            prm->v3 += v_offset;
+            prm->tpage = texture->tpage;
+            prm->clut = texture->clut;
+
             break;
           }
           case TYPE_G3: {
@@ -394,6 +685,20 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->color[0]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            Texture *texture = get_texture(prm->texture);
+            u_short u_offset = texture->u0;
+            u_short v_offset = texture->v0;
+
+            prm->u0 += u_offset;
+            prm->v0 += v_offset;
+            prm->u1 += u_offset;
+            prm->v1 += v_offset;
+            prm->u2 += u_offset;
+            prm->v2 += v_offset;
+            prm->tpage = texture->tpage;
+            prm->clut = texture->clut;
+
             break;
           }
           case TYPE_G4: {
@@ -436,6 +741,22 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data) {
             prm->color[1]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[2]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
             prm->color[3]  = (CVECTOR) { get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter), get_char(prm_data, &byte_counter) };
+
+            Texture *texture = get_texture(prm->texture);
+            u_short u_offset = texture->u0;
+            u_short v_offset = texture->v0;
+
+            prm->u0 += u_offset;
+            prm->v0 += v_offset;
+            prm->u1 += u_offset;
+            prm->v1 += v_offset;
+            prm->u2 += u_offset;
+            prm->v2 += v_offset;
+            prm->u3 += u_offset;
+            prm->v3 += v_offset;
+            prm->tpage = texture->tpage;
+            prm->clut = texture->clut;
+
             break;
           }
           case TYPE_TSPR:

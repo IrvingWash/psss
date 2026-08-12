@@ -2,9 +2,9 @@
 #define DISPLAY_PRIMITIVES_H
 
 /* Primitive Flags */
-#define SINGLE_SIDED 0x0001
-#define SHIP_ENGINE  0x0002
-#define TRANSLUCENT 0x0004
+#define FLAG_SINGLE_SIDED 0x0001
+#define FLAG_SHIP_ENGINE  0x0002
+#define FLAG_TRANSLUCENT 0x0004
 
 /* Primitive Types */
 #define TYPE_F3            1
