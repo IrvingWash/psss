@@ -24,6 +24,15 @@ Camera camera = {0};
 Entity sophia = {0};
 Entity rescue = {0};
 
+typedef enum Entity_Type {
+    SOPHIA,
+    RESCUE,
+
+    ENTITY_TYPE_COUNT,
+} Entity_Type;
+
+enum Entity_Type current_entity = SOPHIA;
+
 Entity create_entity(const char *prm_path, const char *cmp_path) {
     Entity entity = {0};
 
@@ -68,31 +77,34 @@ void update(void) {
     camera_look_at(&camera, &sophia.position, &(SVECTOR) {0, -ONE, 0});
 
     if (joypad_is_pressed(PAD_LEFT)) {
-        sophia.rotation.vy -= 15;
-        rescue.rotation.vy -= 15;
+        current_entity = (current_entity - 1 + ENTITY_TYPE_COUNT) % ENTITY_TYPE_COUNT;
     }
     if (joypad_is_pressed(PAD_RIGHT)) {
-        sophia.rotation.vy += 15;
-        rescue.rotation.vy += 15;
+        current_entity = (current_entity + 1) % ENTITY_TYPE_COUNT;
     }
 }
 
 void render(void) {
     display_start_frame(&camera.look_at);
 
-    display_draw_mesh(
-        &sophia.mesh,
-        sophia.position,
-        sophia.rotation,
-        sophia.scale
-    );
-
-    display_draw_mesh(
-        &rescue.mesh,
-        rescue.position,
-        rescue.rotation,
-        rescue.scale
-    );
+    switch (current_entity) {
+        case SOPHIA:
+            display_draw_mesh(
+                &sophia.mesh,
+                sophia.position,
+                sophia.rotation,
+                sophia.scale
+            );
+            break;
+        case RESCUE:
+            display_draw_mesh(
+                &rescue.mesh,
+                rescue.position,
+                rescue.rotation,
+                rescue.scale
+            );
+            break;
+    }
 
     display_finish_frame();
 }
