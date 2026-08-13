@@ -22,37 +22,30 @@ typedef struct Entity {
 Camera camera = {0};
 
 Entity sophia = {0};
+Entity solaar = {0};
+Entity jacko = {0};
+Entity chang = {0};
+Entity arian = {0};
+Entity arial = {0};
+Entity anasta = {0};
+Entity dekka = {0};
 Entity rescue = {0};
 
 typedef enum Entity_Type {
     SOPHIA,
+    SOLAAR,
+    JACKO,
+    CHANG,
+    ARIAN,
+    ARIAL,
+    ANASTA,
+    DEKKA,
     RESCUE,
 
     ENTITY_TYPE_COUNT,
 } Entity_Type;
 
 enum Entity_Type current_entity = SOPHIA;
-
-Entity create_entity(const char *prm_path, const char *cmp_path) {
-    Entity entity = {0};
-
-    entity.scale = (VECTOR) {ONE, ONE, ONE};
-
-    u_long cmp_length;
-    char *cmp = cd_load_file(cmp_path, &cmp_length);
-    u_long texture_start = get_texture_count();
-    texture_create_from_cmp(cmp);
-
-    u_long prm_length;
-    char *prm = cd_load_file(prm_path, &prm_length);
-    entity.mesh = display_create_mesh_from_prm(prm, texture_start);
-    entity.position = entity.mesh.origin;
-
-    cd_unload_file(prm);
-    cd_unload_file(cmp);
-
-    return entity;
-}
 
 void setup(void) {
     display_init();
@@ -62,12 +55,80 @@ void setup(void) {
     camera.position.vy = -600;
     camera.position.vz = -1500;
 
-    sophia = create_entity("\\ASSETS\\ALLSH.PRM;1", "\\ASSETS\\ALLSH.CMP;1");
-    rescue = create_entity("\\ASSETS\\RESCU.PRM;1", "\\ASSETS\\RESCU.CMP;1");
+    { // "All ships"
+        u_long cmp_length;
+        char *cmp = cd_load_file( "\\ASSETS\\ALLSH.CMP;1", &cmp_length);
+        u_long texture_start = get_texture_count();
+        texture_create_from_cmp(cmp);
+
+        u_long prm_length;
+        char *prm = cd_load_file("\\ASSETS\\ALLSH.PRM;1", &prm_length);
+        Display_Mesh_Bundle mesh_bundle = display_create_meshes_from_prm(prm, texture_start, 8);
+
+        for (int i = 0; i < mesh_bundle.actual_count; i++) {
+            printf("%s\n", mesh_bundle.meshes[i].name);
+        }
+
+        sophia.mesh = mesh_bundle.meshes[0];
+        solaar.mesh = mesh_bundle.meshes[1];
+        jacko.mesh = mesh_bundle.meshes[2];
+        chang.mesh = mesh_bundle.meshes[3];
+        arian.mesh = mesh_bundle.meshes[4];
+        arial.mesh = mesh_bundle.meshes[5];
+        anasta.mesh = mesh_bundle.meshes[6];
+        dekka.mesh = mesh_bundle.meshes[7];
+        sophia.position = sophia.mesh.origin;
+        solaar.position = solaar.mesh.origin;
+        jacko.position = jacko.mesh.origin;
+        chang.position = chang.mesh.origin;
+        arian.position = arian.mesh.origin;
+        arial.position = arial.mesh.origin;
+        anasta.position = anasta.mesh.origin;
+        dekka.position = dekka.mesh.origin;
+        sophia.scale = (VECTOR) {ONE, ONE, ONE};
+        solaar.scale = (VECTOR) {ONE, ONE, ONE};
+        jacko.scale = (VECTOR) {ONE, ONE, ONE};
+        chang.scale = (VECTOR) {ONE, ONE, ONE};
+        arian.scale = (VECTOR) {ONE, ONE, ONE};
+        arial.scale = (VECTOR) {ONE, ONE, ONE};
+        anasta.scale = (VECTOR) {ONE, ONE, ONE};
+        dekka.scale = (VECTOR) {ONE, ONE, ONE};
+
+        cd_unload_file(prm);
+        cd_unload_file(cmp);
+    }
+
+    { // Rescue
+        Entity entity = {0};
+
+        entity.scale = (VECTOR) {ONE, ONE, ONE};
+
+        u_long cmp_length;
+        char *cmp = cd_load_file( "\\ASSETS\\RESCU.CMP;1", &cmp_length);
+        u_long texture_start = get_texture_count();
+        texture_create_from_cmp(cmp);
+
+        u_long prm_length;
+        char *prm = cd_load_file("\\ASSETS\\RESCU.PRM;1", &prm_length);
+        entity.mesh = display_create_mesh_from_prm(prm, texture_start, NULL);
+        entity.position = entity.mesh.origin;
+
+        cd_unload_file(prm);
+        cd_unload_file(cmp);
+
+        rescue = entity;
+    }
 }
 
 void deinit(void) {
     display_destroy_mesh(&sophia.mesh);
+    display_destroy_mesh(&solaar.mesh);
+    display_destroy_mesh(&jacko.mesh);
+    display_destroy_mesh(&chang.mesh);
+    display_destroy_mesh(&arian.mesh);
+    display_destroy_mesh(&arial.mesh);
+    display_destroy_mesh(&anasta.mesh);
+    display_destroy_mesh(&dekka.mesh);
     display_destroy_mesh(&rescue.mesh);
 
     joypad_deinit();
@@ -94,6 +155,62 @@ void render(void) {
                 sophia.position,
                 sophia.rotation,
                 sophia.scale
+            );
+            break;
+        case SOLAAR:
+            display_draw_mesh(
+                &solaar.mesh,
+                solaar.position,
+                solaar.rotation,
+                solaar.scale
+            );
+            break;
+        case JACKO:
+            display_draw_mesh(
+                &jacko.mesh,
+                jacko.position,
+                jacko.rotation,
+                jacko.scale
+            );
+            break;
+        case CHANG:
+            display_draw_mesh(
+                &chang.mesh,
+                chang.position,
+                chang.rotation,
+                chang.scale
+            );
+            break;
+        case ARIAN:
+            display_draw_mesh(
+                &arian.mesh,
+                arian.position,
+                arian.rotation,
+                arian.scale
+            );
+            break;
+        case ARIAL:
+            display_draw_mesh(
+                &arial.mesh,
+                arial.position,
+                arial.rotation,
+                arial.scale
+            );
+            break;
+        case ANASTA:
+            display_draw_mesh(
+                &anasta.mesh,
+                anasta.position,
+                anasta.rotation,
+                anasta.scale
+            );
+            break;
+        case DEKKA:
+            display_draw_mesh(
+                &dekka.mesh,
+                dekka.position,
+                dekka.rotation,
+                dekka.scale
             );
             break;
         case RESCUE:

@@ -485,22 +485,19 @@ void display_draw_mesh(
     }
 }
 
-// byte - name[16]
-// short - vertex_count
-// byte - unused[6]
-// short - normal count
-// byte - unused[6]
-// short - primitive count
-// byte - unused[22]
-// short - flags
-// byte - unused[26]
-// long - origin.x
-// long - origin.y
-// long - origin.z
-// byte - unused[48]
-// short - vertices[0].x
-// ...
-Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_start) {
+Display_Mesh_Bundle display_create_meshes_from_prm(const char *prm_data, u_long texture_start, int mesh_count) {
+    Display_Mesh_Bundle bundle = {0};
+
+    u_long byte_counter = 0;
+    for (int i = 0; i < 8; i++) {
+        bundle.meshes[i] = display_create_mesh_from_prm(prm_data + byte_counter, texture_start, &byte_counter);
+        bundle.actual_count++;
+    }
+
+    return bundle;
+}
+
+Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_start, u_long* byte_counter_return) {
     Display_Mesh mesh = {0};
 
     u_long byte_counter = 0;
@@ -829,6 +826,10 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_s
             break;
           }
         }
+    }
+
+    if (byte_counter_return != NULL) {
+        *byte_counter_return += byte_counter;
     }
 
     return mesh;
