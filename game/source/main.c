@@ -31,6 +31,19 @@ Entity anasta = {0};
 Entity dekka = {0};
 Entity rescue = {0};
 
+#define ENTITY_COUNT 9
+Entity* entities[ENTITY_COUNT] = {
+    &sophia,
+    &solaar,
+    &jacko,
+    &chang,
+    &arian,
+    &arial,
+    &anasta,
+    &dekka,
+    &rescue,
+};
+
 typedef enum Entity_Type {
     SOPHIA,
     SOLAAR,
@@ -142,6 +155,10 @@ void update(void) {
     }
     if (joypad_is_pressed(PAD_RIGHT)) {
         current_entity = (current_entity + 1) % ENTITY_TYPE_COUNT;
+    }
+
+    for (int i = 0; i < ENTITY_COUNT; i++) {
+        entities[i]->rotation.vy += 10;
     }
 }
 
