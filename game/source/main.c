@@ -29,9 +29,8 @@ Entity arian = {0};
 Entity arial = {0};
 Entity anasta = {0};
 Entity dekka = {0};
-Entity rescue = {0};
 
-#define ENTITY_COUNT 9
+#define ENTITY_COUNT 8
 Entity* entities[ENTITY_COUNT] = {
     &sophia,
     &solaar,
@@ -41,7 +40,6 @@ Entity* entities[ENTITY_COUNT] = {
     &arial,
     &anasta,
     &dekka,
-    &rescue,
 };
 
 bool is_right_pressed = false;
@@ -56,7 +54,6 @@ typedef enum Entity_Type {
     ARIAL,
     ANASTA,
     DEKKA,
-    RESCUE,
 
     ENTITY_TYPE_COUNT,
 } Entity_Type;
@@ -80,10 +77,6 @@ void setup(void) {
         u_long prm_length;
         char *prm = cd_load_file("\\ASSETS\\ALLSH.PRM;1", &prm_length);
         Display_Mesh_Bundle mesh_bundle = display_create_meshes_from_prm(prm, texture_start, 8);
-
-        for (int i = 0; i < mesh_bundle.actual_count; i++) {
-            printf("%s\n", mesh_bundle.meshes[i].name);
-        }
 
         sophia.mesh = mesh_bundle.meshes[0];
         solaar.mesh = mesh_bundle.meshes[1];
@@ -113,27 +106,6 @@ void setup(void) {
         cd_unload_file(prm);
         cd_unload_file(cmp);
     }
-
-    { // Rescue
-        Entity entity = {0};
-
-        entity.scale = (VECTOR) {ONE, ONE, ONE};
-
-        u_long cmp_length;
-        char *cmp = cd_load_file( "\\ASSETS\\RESCU.CMP;1", &cmp_length);
-        u_long texture_start = get_texture_count();
-        texture_create_from_cmp(cmp);
-
-        u_long prm_length;
-        char *prm = cd_load_file("\\ASSETS\\RESCU.PRM;1", &prm_length);
-        entity.mesh = display_create_mesh_from_prm(prm, texture_start, NULL);
-        entity.position = entity.mesh.origin;
-
-        cd_unload_file(prm);
-        cd_unload_file(cmp);
-
-        rescue = entity;
-    }
 }
 
 void deinit(void) {
@@ -145,7 +117,6 @@ void deinit(void) {
     display_destroy_mesh(&arial.mesh);
     display_destroy_mesh(&anasta.mesh);
     display_destroy_mesh(&dekka.mesh);
-    display_destroy_mesh(&rescue.mesh);
 
     joypad_deinit();
 }
@@ -240,14 +211,6 @@ void render(void) {
                 dekka.position,
                 dekka.rotation,
                 dekka.scale
-            );
-            break;
-        case RESCUE:
-            display_draw_mesh(
-                &rescue.mesh,
-                rescue.position,
-                rescue.rotation,
-                rescue.scale
             );
             break;
     }
