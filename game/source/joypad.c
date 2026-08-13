@@ -32,3 +32,8 @@ bool joypad_is_pressed(PadButton button_to_check) {
 
     return !(pressed_button & button_to_check);
 }
+
+bool joypad_is_released(PadButton button_to_check) {
+    return !joypad_is_pressed(button_to_check);
+}
+

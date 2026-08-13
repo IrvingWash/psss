@@ -44,6 +44,9 @@ Entity* entities[ENTITY_COUNT] = {
     &rescue,
 };
 
+bool is_right_pressed = false;
+bool is_left_pressed = false;
+
 typedef enum Entity_Type {
     SOPHIA,
     SOLAAR,
@@ -150,11 +153,20 @@ void deinit(void) {
 void update(void) {
     camera_look_at(&camera, &sophia.position, &(SVECTOR) {0, -ONE, 0});
 
-    if (joypad_is_pressed(PAD_LEFT)) {
+    if (joypad_is_pressed(PAD_LEFT) && !is_left_pressed) {
         current_entity = (current_entity - 1 + ENTITY_TYPE_COUNT) % ENTITY_TYPE_COUNT;
+        is_left_pressed = true;
     }
-    if (joypad_is_pressed(PAD_RIGHT)) {
+    if (joypad_is_pressed(PAD_RIGHT) && !is_right_pressed) {
         current_entity = (current_entity + 1) % ENTITY_TYPE_COUNT;
+        is_right_pressed = true;
+    }
+
+    if (joypad_is_released(PAD_RIGHT) && is_right_pressed) {
+        is_right_pressed = false;
+    }
+    if (joypad_is_released(PAD_LEFT) && is_left_pressed) {
+        is_left_pressed = false;
     }
 
     for (int i = 0; i < ENTITY_COUNT; i++) {
