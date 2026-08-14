@@ -71,6 +71,8 @@
 			<dir name="ASSETS">
 				<file name="ALLSH.PRM" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/COMMON/ALLSH.PRM" />
 				<file name="ALLSH.CMP" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/COMMON/ALLSH.CMP" />
+				<file name="SCENE.PRM" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/TRACK01/SCENE.PRM" />
+				<file name="SCENE.CMP" type="data" source="${PROJECT_SOURCE_DIR}/assets/wipeout_assets/TRACK01/SCENE.CMP" />
 			</dir>
 
 			<dummy sectors="1024"/>

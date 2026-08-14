@@ -30,7 +30,7 @@ typedef struct Display_Mesh {
 } Display_Mesh;
 
 typedef struct Display_Mesh_Bundle {
-    Display_Mesh meshes[20];
+    Display_Mesh meshes[264];
     u_short actual_count;
 } Display_Mesh_Bundle;
 

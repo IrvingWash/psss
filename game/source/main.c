@@ -21,52 +21,18 @@ typedef struct Entity {
 
 Camera camera = {0};
 
-Entity sophia = {0};
-Entity solaar = {0};
-Entity jacko = {0};
-Entity chang = {0};
-Entity arian = {0};
-Entity arial = {0};
-Entity anasta = {0};
-Entity dekka = {0};
+#define SHIP_COUNT 8
+Entity ships[SHIP_COUNT];
 
-#define ENTITY_COUNT 8
-Entity* entities[ENTITY_COUNT] = {
-    &sophia,
-    &solaar,
-    &jacko,
-    &chang,
-    &arian,
-    &arial,
-    &anasta,
-    &dekka,
-};
+#define SCENERY_COUNT 264
+Entity sceneries[SCENERY_COUNT];
 
-bool is_right_pressed = false;
-bool is_left_pressed = false;
-
-typedef enum Entity_Type {
-    SOPHIA,
-    SOLAAR,
-    JACKO,
-    CHANG,
-    ARIAN,
-    ARIAL,
-    ANASTA,
-    DEKKA,
-
-    ENTITY_TYPE_COUNT,
-} Entity_Type;
-
-enum Entity_Type current_entity = SOPHIA;
+int current_ship = 0;
 
 void setup(void) {
     display_init();
     joypad_init();
     cd_init();
-
-    camera.position.vy = -600;
-    camera.position.vz = -1500;
 
     { // "All ships"
         u_long cmp_length;
@@ -76,143 +42,111 @@ void setup(void) {
 
         u_long prm_length;
         char *prm = cd_load_file("\\ASSETS\\ALLSH.PRM;1", &prm_length);
-        Display_Mesh_Bundle mesh_bundle = display_create_meshes_from_prm(prm, texture_start, 8);
+        Display_Mesh_Bundle mesh_bundle = display_create_meshes_from_prm(prm, texture_start, SHIP_COUNT);
 
-        sophia.mesh = mesh_bundle.meshes[0];
-        solaar.mesh = mesh_bundle.meshes[1];
-        jacko.mesh = mesh_bundle.meshes[2];
-        chang.mesh = mesh_bundle.meshes[3];
-        arian.mesh = mesh_bundle.meshes[4];
-        arial.mesh = mesh_bundle.meshes[5];
-        anasta.mesh = mesh_bundle.meshes[6];
-        dekka.mesh = mesh_bundle.meshes[7];
-        sophia.position = sophia.mesh.origin;
-        solaar.position = solaar.mesh.origin;
-        jacko.position = jacko.mesh.origin;
-        chang.position = chang.mesh.origin;
-        arian.position = arian.mesh.origin;
-        arial.position = arial.mesh.origin;
-        anasta.position = anasta.mesh.origin;
-        dekka.position = dekka.mesh.origin;
-        sophia.scale = (VECTOR) {ONE, ONE, ONE};
-        solaar.scale = (VECTOR) {ONE, ONE, ONE};
-        jacko.scale = (VECTOR) {ONE, ONE, ONE};
-        chang.scale = (VECTOR) {ONE, ONE, ONE};
-        arian.scale = (VECTOR) {ONE, ONE, ONE};
-        arial.scale = (VECTOR) {ONE, ONE, ONE};
-        anasta.scale = (VECTOR) {ONE, ONE, ONE};
-        dekka.scale = (VECTOR) {ONE, ONE, ONE};
+        for (int i = 0; i < SHIP_COUNT; i++) {
+            ships[i].mesh = mesh_bundle.meshes[i];
+            ships[i].position = ships[i].mesh.origin;
+            ships[i].scale = (VECTOR) {ONE, ONE, ONE};
+        }
 
         cd_unload_file(prm);
         cd_unload_file(cmp);
     }
+
+    { // Scenery
+        u_long cmp_length;
+        char *cmp = cd_load_file( "\\ASSETS\\SCENE.CMP;1", &cmp_length);
+        u_long texture_start = get_texture_count();
+        texture_create_from_cmp(cmp);
+
+        u_long prm_length;
+        char *prm = cd_load_file("\\ASSETS\\SCENE.PRM;1", &prm_length);
+        Display_Mesh_Bundle mesh_bundle = display_create_meshes_from_prm(prm, texture_start, SCENERY_COUNT);
+
+        for (int i = 0; i < SCENERY_COUNT; i++) {
+            sceneries[i].mesh = mesh_bundle.meshes[i];
+            sceneries[i].scale = (VECTOR) {ONE, ONE, ONE};
+            sceneries[i].position = sceneries[i].mesh.origin;
+        }
+
+        cd_unload_file(prm);
+        cd_unload_file(cmp);
+    }
+
+    ships[current_ship].position.vx = 32599;
+    ships[current_ship].position.vy = -347;
+    ships[current_ship].position.vz = -45310;
+
+    camera.position.vx = ships[current_ship].position.vx;
+    camera.position.vy = ships[current_ship].position.vy - 100;
+    camera.position.vz = ships[current_ship].position.vz - 1000;
 }
 
 void deinit(void) {
-    display_destroy_mesh(&sophia.mesh);
-    display_destroy_mesh(&solaar.mesh);
-    display_destroy_mesh(&jacko.mesh);
-    display_destroy_mesh(&chang.mesh);
-    display_destroy_mesh(&arian.mesh);
-    display_destroy_mesh(&arial.mesh);
-    display_destroy_mesh(&anasta.mesh);
-    display_destroy_mesh(&dekka.mesh);
+    for (int i = 0; i < SHIP_COUNT; i++) {
+        display_destroy_mesh(&ships[i].mesh);
+    }
+
+    for (int i = 0; i < SCENERY_COUNT; i++) {
+        display_destroy_mesh(&sceneries[i].mesh);
+    }
 
     joypad_deinit();
 }
 
 void update(void) {
-    camera_look_at(&camera, &sophia.position, &(SVECTOR) {0, -ONE, 0});
+    camera_look_at(&camera, &ships[current_ship].position, &(SVECTOR) {0, -ONE, 0});
 
-    if (joypad_is_pressed(PAD_LEFT) && !is_left_pressed) {
-        current_entity = (current_entity - 1 + ENTITY_TYPE_COUNT) % ENTITY_TYPE_COUNT;
-        is_left_pressed = true;
+    if (joypad_is_pressed(PAD_LEFT)) {
+        camera.position.vx -= 100;
     }
-    if (joypad_is_pressed(PAD_RIGHT) && !is_right_pressed) {
-        current_entity = (current_entity + 1) % ENTITY_TYPE_COUNT;
-        is_right_pressed = true;
+    if (joypad_is_pressed(PAD_RIGHT)) {
+        camera.position.vx += 100;
     }
-
-    if (joypad_is_released(PAD_RIGHT) && is_right_pressed) {
-        is_right_pressed = false;
+    if (joypad_is_pressed(PAD_UP)) {
+        camera.position.vz += 100;
     }
-    if (joypad_is_released(PAD_LEFT) && is_left_pressed) {
-        is_left_pressed = false;
+    if (joypad_is_pressed(PAD_DOWN)) {
+        camera.position.vz -= 100;
     }
 
-    for (int i = 0; i < ENTITY_COUNT; i++) {
-        entities[i]->rotation.vy += 10;
+    if (joypad_is_released(PAD_RIGHT)) {
+    }
+    if (joypad_is_released(PAD_LEFT)) {
     }
 }
 
 void render(void) {
     display_start_frame(&camera.look_at);
 
-    switch (current_entity) {
-        case SOPHIA:
-            display_draw_mesh(
-                &sophia.mesh,
-                sophia.position,
-                sophia.rotation,
-                sophia.scale
-            );
-            break;
-        case SOLAAR:
-            display_draw_mesh(
-                &solaar.mesh,
-                solaar.position,
-                solaar.rotation,
-                solaar.scale
-            );
-            break;
-        case JACKO:
-            display_draw_mesh(
-                &jacko.mesh,
-                jacko.position,
-                jacko.rotation,
-                jacko.scale
-            );
-            break;
-        case CHANG:
-            display_draw_mesh(
-                &chang.mesh,
-                chang.position,
-                chang.rotation,
-                chang.scale
-            );
-            break;
-        case ARIAN:
-            display_draw_mesh(
-                &arian.mesh,
-                arian.position,
-                arian.rotation,
-                arian.scale
-            );
-            break;
-        case ARIAL:
-            display_draw_mesh(
-                &arial.mesh,
-                arial.position,
-                arial.rotation,
-                arial.scale
-            );
-            break;
-        case ANASTA:
-            display_draw_mesh(
-                &anasta.mesh,
-                anasta.position,
-                anasta.rotation,
-                anasta.scale
-            );
-            break;
-        case DEKKA:
-            display_draw_mesh(
-                &dekka.mesh,
-                dekka.position,
-                dekka.rotation,
-                dekka.scale
-            );
-            break;
+    display_draw_mesh(
+        &ships[0].mesh,
+        ships[0].position,
+        ships[0].rotation,
+        ships[0].scale
+    );
+
+    for (int i = 0; i < SCENERY_COUNT; i++) {
+        Entity *scenery_object = &sceneries[i];
+
+        { // Draw scenery which is close enough to the camera
+            VECTOR delta = {0};
+            delta.vx = scenery_object->position.vx - camera.position.vx;
+            delta.vy = scenery_object->position.vy - camera.position.vy;
+            delta.vz = scenery_object->position.vz - camera.position.vz;
+
+            u_long delta_magnitude_squared = delta.vx * delta.vx + delta.vy * delta.vy + delta.vz * delta.vz;
+
+            if (delta_magnitude_squared < 700000000) {
+                display_draw_mesh(
+                    &scenery_object->mesh,
+                    scenery_object->position,
+                    scenery_object->rotation,
+                    scenery_object->scale
+                );
+            }
+        }
     }
 
     display_finish_frame();

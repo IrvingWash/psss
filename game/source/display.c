@@ -489,7 +489,7 @@ Display_Mesh_Bundle display_create_meshes_from_prm(const char *prm_data, u_long 
     Display_Mesh_Bundle bundle = {0};
 
     u_long byte_counter = 0;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < mesh_count; i++) {
         bundle.meshes[i] = display_create_mesh_from_prm(prm_data + byte_counter, texture_start, &byte_counter);
         bundle.actual_count++;
     }
@@ -505,6 +505,7 @@ Display_Mesh display_create_mesh_from_prm(const char *prm_data, u_long texture_s
     for (int i = 0; i < 16; i++) {
         mesh.name[i] = get_char(prm_data, &byte_counter);
     }
+    printf("name: %s!\n", mesh.name);
 
     mesh.vertex_count = get_short_be(prm_data, &byte_counter);
     byte_counter += 6;
